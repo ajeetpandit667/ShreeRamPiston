@@ -1,0 +1,53 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jobs - Shree Ram Piston</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <!-- Navigation Bar (standardized) -->
+  <nav class="bg-blue-600 text-white shadow-lg">
+    <div class="container mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="text-xl font-bold">Shree Ram Piston</div>
+      <div class="space-x-4">
+        <a href="{% url 'repairs:home' %}" class="hover:text-gray-200">Home</a>
+        <a href="{% url 'repairs:job_list' %}" class="hover:text-gray-200">Jobs</a>
+      </div>
+    </div>
+  </nav>
+  <main class="flex-grow">
+    <div class="container mx-auto px-6 py-8">
+      <div class="bg-white rounded-lg shadow-lg p-8">
+      <h1 class="text-2xl font-bold text-center mb-8">Recent Jobs</h1>
+      <ul class="divide-y divide-gray-200">
+        {% for j in jobs %}
+        <li class="py-4 flex items-center justify-between">
+          <div>
+            <a href="{% url 'repairs:job_detail' j.job_id %}" class="text-blue-600 font-semibold hover:underline">{{ j.job_id }}</a>
+            <span class="ml-2 text-gray-700">{{ j.customer.phone }}</span>
+            <span class="ml-2 px-2 py-1 rounded bg-gray-200 text-xs">{{ j.status }}</span>
+          </div>
+        </li>
+        {% empty %}
+        <li class="py-4 text-center text-gray-500">No jobs</li>
+        {% endfor %}
+      </ul>
+      <div class="mt-8 text-center">
+        <a href="{% url 'repairs:home' %}" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Create new request</a>
+      </div>
+      </div>
+    </div>
+  </main>
+  <!-- Footer (standardized) -->
+  <footer class="bg-gray-800 text-white mt-12">
+    <div class="container mx-auto px-6 py-4">
+      <div class="text-center">
+        <p>© 2025 Shree Ram Piston. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shree Ram Piston - Repair Service</title>
+    <!-- Include Tailwind CSS from CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation Bar (standardized) -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="text-xl font-bold">Shree Ram Piston</div>
+            <div class="space-x-4">
+                <a href="{% url 'repairs:home' %}" class="hover:text-gray-200">Home</a>
+                <a href="{% url 'repairs:job_list' %}" class="hover:text-gray-200">Jobs</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-center mb-8">Create Repair Request</h2>
+            
+            <!-- Repair Request Form -->
+            <form id="reqForm" class="max-w-md mx-auto space-y-4">
+                {% csrf_token %}
+                <div>
+                    <input type="text" name="name" placeholder="Customer Name" required
+                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <input type="text" name="phone" placeholder="Phone" required
+                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <input type="email" name="email" placeholder="Email (optional)"
+                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <input type="text" name="item" placeholder="Item Name" required
+                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <textarea name="reason" placeholder="Damage Reason"
+                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 h-24"></textarea>
+                </div>
+                <div>
+                    <input type="number" name="days" placeholder="Repair Days" value="2"
+                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <select name="store" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                        {% for s in stores %}
+                        <option value="{{s.id}}">{{s.name}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit"
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">
+                    Request OTP
+                </button>
+            </form>
+
+            <!-- OTP Verification Section -->
+            <div id="otpDiv" style="display:none;" class="max-w-md mx-auto mt-8 space-y-4">
+                <input type="text" id="otp" placeholder="Enter OTP"
+                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                <button id="verifyBtn"
+                    class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+                    Verify OTP
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer (standardized) -->
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="container mx-auto px-6 py-4">
+            <div class="text-center">
+                <p>© 2025 Shree Ram Piston. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    // Helper to read the CSRF token cookie (Django sets 'csrftoken')
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const csrftoken = getCookie('csrftoken');
+
+    const form = document.getElementById('reqForm');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = new FormData(form);
+        const res = await fetch('/repairs/request-otp/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+            body: data,
+            credentials: 'same-origin'
+        });
+        const json = await res.json();
+        if (json.success) {
+            alert("OTP sent (check your email or console)");
+            localStorage.setItem('temp_id', json.temp_id);
+            document.getElementById('otpDiv').style.display = 'block';
+        } else alert(json.error);
+    });
+
+    document.getElementById('verifyBtn').addEventListener('click', async () => {
+        const otp = document.getElementById('otp').value;
+        const formData = new FormData();
+        formData.append('temp_id', localStorage.getItem('temp_id'));
+        formData.append('otp', otp);
+        const res = await fetch('/repairs/verify-otp/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const json = await res.json();
+        if (json.success) {
+            alert("Job Created: " + json.job_id);
+            // Optional: Clear form and hide OTP div after successful verification
+            form.reset();
+            document.getElementById('otpDiv').style.display = 'none';
+        } else alert(json.error);
+    });
+    </script>
+</body>
+</html>
