@@ -1,0 +1,78 @@
+/* auth.css - shared by login & reset pages */
+body {
+  background: #0d0d0d;
+  color: #fff;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.auth-container {
+  width: 420px;
+  background: rgba(20,20,20,0.95);
+  padding: 28px;
+  border: 1px solid rgba(228,96,51,0.9);
+  box-shadow: 0 8px 30px rgba(228,96,51,0.12);
+  border-radius: 6px;
+}
+
+.auth-container h2 {
+  color: #fff;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.auth-container p {
+  color: #cfcfcf;
+  margin-bottom: 14px;
+}
+
+input[type="email"],
+input[type="text"],
+input[type="password"],
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid #3a3a3a;
+  color: #fff;
+  margin-bottom: 16px;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+input:focus {
+  border-bottom-color: #e46033;
+  box-shadow: 0 4px 12px rgba(228,96,51,0.06);
+}
+
+.btn {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: 22px;
+  background: linear-gradient(145deg,#ff8b47,#e46033);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+a { color: #ff8b47; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Errors box */
+.error-box {
+  border-left: 4px solid #ff5050;
+  background: rgba(255,80,80,0.06);
+  color: #ffb3b3;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  border-radius: 3px;
+  font-size: 14px;
+}
+
+/* small link text */
+.small { color: #bfbfbf; font-size: 13px; margin-top: 12px; display:block; }

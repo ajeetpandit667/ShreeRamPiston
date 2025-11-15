@@ -16,4 +16,9 @@ urlpatterns = [
     path('jobs/<str:job_id>/generate-pickup-otp/', views.generate_pickup_otp, name='generate_pickup_otp'),
     path('jobs/<str:job_id>/verify-pickup/', views.verify_pickup, name='verify_pickup'),
     path('jobs/<str:job_id>/upload-photo/', views.upload_photo, name='upload_photo'),
+    path('dashboard/', views.dashboard, name='dashboard'),
+    path('store-dashboard/', views.store_dashboard, name='store_dashboard'),
+    path('warehouse-dashboard/', views.warehouse_dashboard, name='warehouse_dashboard'),
+
+
 ]

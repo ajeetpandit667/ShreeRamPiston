@@ -7,12 +7,15 @@ import uuid
 
 User = get_user_model()
 
-def job_upload_path(instance, filename):
-    return f"jobs/{instance.job_id}/{filename}"
 
-# Fix: define generate_job_id before RepairJob model
+def job_upload_path(instance, filename):
+    # store uploaded job photos under jobs/<job_id>/filename
+    return f"jobs/{instance.job.job_id}/{filename}"
+
+
 def generate_job_id():
     return f"JOB-{uuid.uuid4().hex[:8].upper()}"
+
 
 class Store(models.Model):
     name = models.CharField(max_length=200)
@@ -20,6 +23,7 @@ class Store(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class Customer(models.Model):
     phone = models.CharField(max_length=20, unique=True)
@@ -29,12 +33,14 @@ class Customer(models.Model):
     def __str__(self):
         return f"{self.name} - {self.phone}"
 
+
 class Warehouse(models.Model):
     name = models.CharField(max_length=200)
     address = models.TextField(blank=True)
 
     def __str__(self):
         return self.name
+
 
 class Vendor(models.Model):
     name = models.CharField(max_length=200)
@@ -43,6 +49,7 @@ class Vendor(models.Model):
     def __str__(self):
         return self.name
 
+
 class Courier(models.Model):
     name = models.CharField(max_length=200)
     tracking_url_template = models.URLField(blank=True)
@@ -50,19 +57,6 @@ class Courier(models.Model):
     def __str__(self):
         return self.name
 
-class JobPhoto(models.Model):
-    # optional model for storing multiple photos per job
-    job = models.ForeignKey('RepairJob', on_delete=models.CASCADE, related_name='photos')
-    file = models.FileField(upload_to=job_upload_path)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-
-class StatusHistory(models.Model):
-    job = models.ForeignKey('RepairJob', on_delete=models.CASCADE, related_name='history')
-    from_status = models.CharField(max_length=100)
-    to_status = models.CharField(max_length=100)
-    by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    note = models.TextField(blank=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
 
 class RepairJob(models.Model):
     STATUS_CHOICES = [
@@ -106,6 +100,22 @@ class RepairJob(models.Model):
     def __str__(self):
         return self.job_id
 
+
+class JobPhoto(models.Model):
+    job = models.ForeignKey(RepairJob, on_delete=models.CASCADE, related_name='photos')
+    file = models.FileField(upload_to=job_upload_path)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+
+class StatusHistory(models.Model):
+    job = models.ForeignKey(RepairJob, on_delete=models.CASCADE, related_name='history')
+    from_status = models.CharField(max_length=100)
+    to_status = models.CharField(max_length=100)
+    by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    note = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+
 class PendingCreate(models.Model):
     temp_id = models.CharField(max_length=60, unique=True)
     payload = models.JSONField()
@@ -114,11 +124,13 @@ class PendingCreate(models.Model):
     attempts = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
 class OtpLog(models.Model):
     phone = models.CharField(max_length=20)
     event = models.CharField(max_length=50)
     payload = models.JSONField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
+
 
 class NotifyLog(models.Model):
     channel = models.CharField(max_length=20)  # whatsapp/sms/email
@@ -127,19 +139,33 @@ class NotifyLog(models.Model):
     payload = models.JSONField(null=True, blank=True)
     result = models.TextField(blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
-    
-    
+
+
 class StaffProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    store = models.ForeignKey(Store, on_delete=models.SET_NULL, null=True, blank=True)
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True, blank=True)
-    role = models.CharField(max_length=20, choices=[
+    ROLE_CHOICES = [
         ('store', 'Store Staff'),
         ('warehouse', 'Warehouse Staff'),
         ('admin', 'Admin'),
-    ])
-    
+    ]
 
-def generate_job_id():
-    import uuid
-    return f"JOB-{uuid.uuid4().hex[:8].upper()}"
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    store = models.ForeignKey(Store, null=True, blank=True, on_delete=models.SET_NULL)
+    warehouse = models.ForeignKey(Warehouse, null=True, blank=True, on_delete=models.SET_NULL)
+
+    def __str__(self):
+        return f"{self.user.username} ({self.role})"
+
+
+class LoginProfile(models.Model):
+    """Simple marker/profile to indicate a user has completed registration and is allowed to log in.
+
+    This is intentionally minimal: it uses OneToOneField to User and an `is_registered` flag.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='loginprofile')
+    is_registered = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"LoginProfile({self.user.username}) registered={self.is_registered}"
+

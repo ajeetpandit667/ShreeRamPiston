@@ -3,6 +3,8 @@ from twilio.rest import Client
 from django.conf import settings
 from django.core.mail import send_mail
 from .models import NotifyLog
+import logging
+logger = logging.getLogger(__name__)
 
 
 def send_notification(to, text, channel='mock', payload=None):
@@ -28,7 +30,10 @@ def send_notification(to, text, channel='mock', payload=None):
             client.messages.create(body=text, from_=settings.TWILIO_FROM, to=to)
             return True
         except Exception as e:
-            print(f"SMS sending failed: {str(e)}")
+            if getattr(settings, 'DEBUG', False):
+                # During development print simple message
+                print(f"SMS sending failed: {str(e)}")
+            logger.exception('SMS sending failed')
             return False
 
     if channel == 'email':
@@ -39,9 +44,13 @@ def send_notification(to, text, channel='mock', payload=None):
             send_mail(subject, text, from_email, [to], fail_silently=False)
             return True
         except Exception as e:
-            print(f"Email sending failed: {str(e)}")
+            if getattr(settings, 'DEBUG', False):
+                print(f"Email sending failed: {str(e)}")
+            logger.exception('Email sending failed')
             return False
 
     # Fallback: mock
-    print(f"[MOCK] {to}: {text}")
+    if getattr(settings, 'DEBUG', False):
+        print(f"[MOCK] {to}: {text}")
+    logger.debug('Mock notification to %s: %s', to, text)
     return True

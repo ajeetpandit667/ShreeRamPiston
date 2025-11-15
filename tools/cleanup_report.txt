@@ -1,0 +1,46 @@
+Archived files:
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_check_authform.py
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_generic_login_test.py
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_inspect_noprofile.py
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_loginprofile_smoketest.py
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_login_smoketest.py
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_register_and_login.py
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_password_reset.py
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_send_email.py
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_reminders.bat
+
+Scan for prints/TODO/DEBUG:
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\Repair\settings.py:38: DEBUG = True
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\Repair\urls.py:50: if settings.DEBUG:
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\repairs\notifications.py:31: print(f"SMS sending failed: {str(e)}")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\repairs\notifications.py:42: print(f"Email sending failed: {str(e)}")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\repairs\notifications.py:46: print(f"[MOCK] {to}: {text}")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\repairs\views.py:143: print(f"[MOCK SMS] OTP for {phone}: {otp}")  # developer convenience
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\repairs\views.py:145: print(f"[MOCK EMAIL] OTP for {email}: {otp}")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\repairs\views.py:206: print(f"[MOCK NOTIFY] Job created {job.job_id} for {customer.phone} / {getattr(customer, 'email', '')}")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\repairs\views.py:281: print(f"[MOCK] Pickup OTP for {job.customer.phone}: {otp}")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\add_bg_from_path.py:14: print("Usage: python tools\\add_bg_from_path.py C:\\path\\to\\image.jpg")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\add_bg_from_path.py:18: print(f"Source file does not exist: {src}")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\add_bg_from_path.py:26: print(f"Copied {src} -> {dest}")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\add_bg_from_path.py:28: print("Failed to copy:", e)
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\cleanup_repo.py:11: - Scans `.py` files under the project for occurrences of `print(`, `TODO`, and `DEBUG` and writes a report to `tools/cleanup_report.txt`.
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\cleanup_repo.py:50: # Scan project for debug prints and TODOs
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\cleanup_repo.py:62: if 'print(' in line or 'TODO' in line or 'DEBUG' in line:
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\cleanup_repo.py:73: r.write('\nScan for prints/TODO/DEBUG:\n')
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\cleanup_repo.py:77: print('Archived files count:', len(moved))
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\cleanup_repo.py:78: print('Report written to', report_path)
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_check_authform.py:7: print('is_valid', form.is_valid())
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_check_authform.py:8: print('errors', form.errors)
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_check_authform.py:9: print('non_field_errors', form.non_field_errors())
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_inspect_noprofile.py:10: print('status', r2.status_code)
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_inspect_noprofile.py:11: print('content:')
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\run_inspect_noprofile.py:12: print(r2.content.decode('utf-8'))
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_password_reset.py:16: print(f"Password reset request status: {resp.status_code}")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_password_reset.py:17: print(f"Redirected to: {resp.request.get('PATH_INFO')}")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_password_reset.py:18: print("\n[Password reset email should print to console above]")
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_send_email.py:11: print('EMAIL_BACKEND:', settings.EMAIL_BACKEND)
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_send_email.py:12: print('EMAIL_HOST:', getattr(settings, 'EMAIL_HOST', None))
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_send_email.py:13: print('EMAIL_PORT:', getattr(settings, 'EMAIL_PORT', None))
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_send_email.py:14: print('DEFAULT_FROM_EMAIL:', settings.DEFAULT_FROM_EMAIL)
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_send_email.py:18: print('send_mail called (check your inbox/spam).')
+c:\Users\ajaym\OneDrive\Desktop\Shree Ram Piston\demoProject\Repair\tools\archive\scripts\test_send_email.py:20: print('Error sending email:', repr(e))

@@ -19,14 +19,40 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.auth import views as auth_views
+from repairs import views as repairs_views
 
+
+# Consolidated URL patterns for the project
 urlpatterns = [
-    # Redirect root URL to the repairs app home
-    path('', RedirectView.as_view(url='/repairs/', permanent=False)),
     path('admin/', admin.site.urls),
-    path('repairs/', include('repairs.urls')),  # Include repairs app URLs with repairs/ prefix
+
+    # auth: login/logout (login template path is registration/login.html)
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+
+    # password reset (Django builtin views)
+    path('password-reset/', auth_views.PasswordResetView.as_view(template_name='registration/password_reset_form.html'), name='password_reset'),
+    path('password-reset/done/', auth_views.PasswordResetDoneView.as_view(template_name='registration/password_reset_done.html'), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name='registration/password_reset_confirm.html'), name='password_reset_confirm'),
+    path('reset/done/', auth_views.PasswordResetCompleteView.as_view(template_name='registration/password_reset_complete.html'), name='password_reset_complete'),
+
+    # your app urls (dashboard, role-based pages)
+    # mount repairs app at site root
+    path('', include('repairs.urls')),
+    # also support the legacy /repairs/ prefix so both URLs work
+    # redirect /repairs/ to site root where the app is mounted
+    path('repairs/', RedirectView.as_view(url='/', permanent=False)),
 ]
+
 
 # Serve media files during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    
+    
+    
+# repair_project/urls.py
+
+
+

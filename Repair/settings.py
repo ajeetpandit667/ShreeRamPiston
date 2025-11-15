@@ -16,6 +16,17 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Optionally load environment variables from a local .env file when python-dotenv is installed
+try:
+    from dotenv import load_dotenv
+    try:
+        load_dotenv(BASE_DIR / '.env')
+    except Exception:
+        pass
+    _DOTENV_AVAILABLE = True
+except Exception:
+    _DOTENV_AVAILABLE = False
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -117,7 +128,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -139,15 +150,33 @@ TWILIO_AUTH = 'your_twilio_auth_token'  # Replace with your Twilio Auth Token
 TWILIO_FROM = 'your_twilio_phone_number'  # Replace with your Twilio phone number
 
 # Email settings: prefer SMTP when environment variables are set, otherwise fall back to console backend
-# For real email delivery, set the environment variables: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
-if os.getenv('SMTP_HOST'):
+# For real email delivery, set environment variables: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_TLS, DEFAULT_FROM_EMAIL
+# Example for Gmail:
+#   set SMTP_HOST=smtp.gmail.com
+#   set SMTP_PORT=587
+#   set SMTP_USER=your_email@gmail.com
+#   set SMTP_PASS=your_app_password
+#   set SMTP_TLS=True
+#   set DEFAULT_FROM_EMAIL=your_email@gmail.com
+
+# If the user provided SMTP_HOST (via env or .env), configure SMTP backend
+_SMTP_HOST = os.getenv('SMTP_HOST')
+if _SMTP_HOST:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = os.getenv('SMTP_HOST')
-    EMAIL_PORT = int(os.getenv('SMTP_PORT', '587'))
+    EMAIL_HOST = _SMTP_HOST
+    # Support SSL or TLS depending on provider. If SSL requested and no port provided, default to 465.
+    EMAIL_USE_SSL = os.getenv('SMTP_SSL', 'False').lower() in ('1', 'true', 'yes')
+    default_port = '465' if EMAIL_USE_SSL else '587'
+    EMAIL_PORT = int(os.getenv('SMTP_PORT', default_port))
     EMAIL_HOST_USER = os.getenv('SMTP_USER')
     EMAIL_HOST_PASSWORD = os.getenv('SMTP_PASS')
-    EMAIL_USE_TLS = os.getenv('SMTP_TLS', 'True').lower() in ('1','true','yes')
-    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@example.com')
+    EMAIL_USE_TLS = os.getenv('SMTP_TLS', 'False').lower() in ('1', 'true', 'yes')
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@shreeramrepairs.com')
 else:
+    # Development: emails print to console
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = 'no-reply@example.com'
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@shreeramrepairs.com')
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/repairs/'
+LOGOUT_REDIRECT_URL = '/login/'

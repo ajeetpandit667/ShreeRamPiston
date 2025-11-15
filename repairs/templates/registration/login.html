@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'repairs/login.css' %}">
+    <style>
+        /* Inline fallback: ensure background image is applied even if external CSS fails */
+        body { background-image: url("{% static 'repairs/bg.jpg' %}"); background-size: cover; background-position: center center; }
+    </style>
+</head>
+<body>
+
+<div class="auth-wrapper" id="authWrapper">
+    <div class="panel left-panel">
+        <div class="form-box">
+            <h2>Login</h2>
+            {% if error %}
+            <div class="error-message" style="color: #b00020; margin-bottom:10px;">{{ error }}</div>
+            {% endif %}
+            <form method="POST" class="auth-form login-form">
+                {% csrf_token %}
+                <!-- preserve next so users return to requested page after login -->
+                <input type="hidden" name="next" value="{{ request.GET.next }}">
+                {% if form.errors %}
+                    <div class="error-box" style="color: #b00020; margin-bottom:10px;">
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="field">
+                    <label>Username</label>
+                    <input type="text" name="username" required />
+                </div>
+                <div class="field">
+                    <label>Password</label>
+                    <input type="password" name="password" required />
+                </div>
+                <button type="submit" class="btn">Login</button>
+                <p style="text-align: center; margin-top: 10px;">
+                    <a href="{% url 'password_reset' %}" style="color: #007bff; text-decoration: none; font-size: 14px;">Forgot Password?</a>
+                </p>
+                <p class="toggle-text">Don't have an account? <a href="#" id="showRegister">Sign Up</a></p>
+            </form>
+        </div>
+    </div>
+
+        <div class="panel right-panel">
+            <div class="form-box">
+                <h2>Register</h2>
+                <form method="POST" action="/register/" class="auth-form register-form" id="registerForm">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label>Full name</label>
+                        <input type="text" name="name" required />
+                    </div>
+                    <div class="field">
+                        <label>Email</label>
+                        <input type="email" name="email" required />
+                    </div>
+                    <div class="field">
+                        <label>Password</label>
+                        <input type="password" name="password" id="regPassword" required />
+                    </div>
+                    <div class="field">
+                        <label>Confirm password</label>
+                        <input type="password" name="confirm_password" id="regConfirm" required />
+                    </div>
+                    <div class="field">
+                        <label>Mobile number</label>
+                        <input type="tel" name="mobile" id="regMobile" pattern="[0-9]{7,15}" required />
+                    </div>
+                    <button type="submit" class="btn">Register</button>
+                    <p class="toggle-text">Already have an account? <a href="#" id="showLogin">Login</a></p>
+                </form>
+            </div>
+        </div>
+</div>
+
+<script>
+    (function(){
+        const wrapper = document.getElementById('authWrapper');
+        const showRegister = document.getElementById('showRegister');
+        const showLogin = document.getElementById('showLogin');
+
+        function enableRegister(e){
+            if(e) e.preventDefault();
+            wrapper.classList.add('register-active');
+        }
+
+        function enableLogin(e){
+            if(e) e.preventDefault();
+            wrapper.classList.remove('register-active');
+        }
+
+            showRegister.addEventListener('click', enableRegister);
+            showLogin.addEventListener('click', enableLogin);
+
+            // Basic client-side validation for register form
+            const registerForm = document.getElementById('registerForm');
+            if(registerForm){
+                registerForm.addEventListener('submit', function(e){
+                    const pw = document.getElementById('regPassword').value;
+                    const cpw = document.getElementById('regConfirm').value;
+                    const mobile = document.getElementById('regMobile').value;
+                    if(pw !== cpw){
+                        e.preventDefault();
+                        alert('Passwords do not match');
+                        return false;
+                    }
+                    if(!/^[0-9]{7,15}$/.test(mobile)){
+                        e.preventDefault();
+                        alert('Enter a valid mobile number (7-15 digits)');
+                        return false;
+                    }
+                    // allow submit (server must handle /register/)
+                });
+            }
+    })();
+</script>
+
+</body>
+</html>

@@ -1,6 +1,6 @@
 # repairs/views.py
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from .models import (
     Store, Customer, RepairJob, PendingCreate, StatusHistory, 
     OtpLog, NotifyLog, Courier, JobPhoto
@@ -13,11 +13,50 @@ from django.contrib.auth.decorators import login_required
 from .notifications import send_notification
 from django.core.mail import send_mail
 from django.conf import settings
+from django.contrib.auth import authenticate, login as auth_login
+from django.contrib.auth.models import User
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.decorators import login_required, user_passes_test
+from .models import StaffProfile, RepairJob
+
+
+
+
+def has_role(role):
+    def check(user):
+        try:
+            return user.is_authenticated and hasattr(user, 'staffprofile') and user.staffprofile.role == role
+        except StaffProfile.DoesNotExist:
+            return False
+    return user_passes_test(check)
+
+store_required = has_role('store')
+warehouse_required = has_role('warehouse')
+
+
+
+@login_required
+@store_required
+def store_dashboard(request):
+    # store-specific page
+    profile = request.user.staffprofile
+    # only jobs for this store
+    jobs = RepairJob.objects.filter(store=profile.store).order_by('-created_at')
+    return render(request, 'repairs/store_dashboard.html', {'jobs': jobs})
+
+@login_required
+@warehouse_required
+def warehouse_dashboard(request):
+    profile = request.user.staffprofile
+    # jobs that are dispatched/received for warehouse view
+    jobs = RepairJob.objects.filter(status__in=['dispatched','received']).order_by('-updated_at')
+    return render(request, 'repairs/warehouse_dashboard.html', {'jobs': jobs})
 
 
 def generate_otp_code(n=6):
     return ''.join(random.choices(string.digits, k=n))
 
+@login_required
 def home(request):
     stores = Store.objects.all()
     return render(request, 'repairs/home.html', {'stores': stores})
@@ -101,9 +140,10 @@ def request_otp(request):
             except Exception:
                 pass
 
-    print(f"[MOCK SMS] OTP for {phone}: {otp}")  # developer convenience
-    if email:
-        print(f"[MOCK EMAIL] OTP for {email}: {otp}")
+    if getattr(settings, 'DEBUG', False):
+        print(f"[MOCK SMS] OTP for {phone}: {otp}")  # developer convenience
+        if email:
+            print(f"[MOCK EMAIL] OTP for {email}: {otp}")
 
     return JsonResponse({'success': True, 'temp_id': temp_id})
 
@@ -164,7 +204,8 @@ def verify_otp(request):
             send_notification(customer.email, f"Your job {job.job_id} has been created.", channel='email', payload={'job_id': job.job_id})
         except Exception:
             pass
-    print(f"[MOCK NOTIFY] Job created {job.job_id} for {customer.phone} / {getattr(customer, 'email', '')}")
+    if getattr(settings, 'DEBUG', False):
+        print(f"[MOCK NOTIFY] Job created {job.job_id} for {customer.phone} / {getattr(customer, 'email', '')}")
 
     pending.delete()
     return JsonResponse({'success': True, 'job_id': job.job_id})
@@ -239,7 +280,8 @@ def generate_pickup_otp(request, job_id):
     job.save()
     OtpLog.objects.create(phone=job.customer.phone, event='pickup_otp_generated', payload={'job_id': job.job_id, 'otp': otp})
     NotifyLog.objects.create(channel='mock', to=job.customer.phone, type='pickup_otp', payload={'otp': otp})
-    print(f"[MOCK] Pickup OTP for {job.customer.phone}: {otp}")
+    if getattr(settings, 'DEBUG', False):
+        print(f"[MOCK] Pickup OTP for {job.customer.phone}: {otp}")
     return JsonResponse({'success': True, 'job_id': job.job_id})
 
 @csrf_protect
@@ -275,5 +317,168 @@ def verify_pickup(request, job_id):
     return JsonResponse({'success': True, 'job_id': job.job_id})
 
 
+@csrf_protect
+def register(request):
+    """Handle user registration from the login page register form.
+    Creates a Django user (username uses email if provided, otherwise mobile),
+    creates a Customer record, logs the user in, and redirects to LOGIN_REDIRECT_URL.
+    """
+    if request.method != 'POST':
+        return redirect('login')
+
+    name = request.POST.get('name', '').strip()
+    email = request.POST.get('email', '').strip()
+    password = request.POST.get('password')
+    confirm = request.POST.get('confirm_password')
+    mobile = request.POST.get('mobile', '').strip()
+
+    # basic validation
+    if not (name and email and password and confirm and mobile):
+        # simple fallback: redirect back to login with a message could be improved
+        return redirect('login')
+    if password != confirm:
+        return redirect('login')
+
+    username = email or mobile
+
+    # ensure unique username
+    original_username = username
+    suffix = 1
+    while User.objects.filter(username=username).exists():
+        username = f"{original_username}_{suffix}"
+        suffix += 1
+
+    created_user = User.objects.create_user(username=username, email=email, password=password, first_name=name)
+
+    # create or update Customer
+    try:
+        customer, created = Customer.objects.get_or_create(phone=mobile, defaults={'name': name, 'email': email})
+        if not created:
+            customer.name = name
+            customer.email = email
+            customer.save()
+    except Exception:
+        # ignore customer creation errors for now
+        pass
+
+    # authenticate and login
+    user = authenticate(username=username, password=password)
+    if user is not None:
+        auth_login(request, user)
+
+    # mark user as registered so they are allowed to login
+    try:
+        from .models import LoginProfile
+        lp, created = LoginProfile.objects.get_or_create(user=created_user)
+        lp.is_registered = True
+        lp.save()
+    except Exception:
+        # non-fatal if profile creation fails
+        pass
+
+    # redirect to configured login redirect (repairs home)
+    redirect_to = getattr(settings, 'LOGIN_REDIRECT_URL', '/')
+    return redirect(redirect_to)
 
 
+@csrf_protect
+def custom_login(request):
+    """Custom login view that distinguishes between "user not registered" and "invalid password".
+
+    WARNING: exposing whether a username exists is less secure; doing so because the user asked
+    for explicit messages. Consider changing to a generic message in production.
+    """
+    # Use a single generic error message to avoid username enumeration
+    generic_error = 'Invalid username or password.'
+    error = None
+    form = None
+
+    # Determine 'next' (where to redirect after successful login)
+    next_param = request.POST.get('next') or request.GET.get('next')
+
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+
+        # If the form validates credentials, check loginprofile and log user in.
+        if form.is_valid():
+            user_obj = form.get_user()
+            try:
+                lp = user_obj.loginprofile
+                if not lp.is_registered:
+                    # mark as invalid by adding a non-field error
+                    form.add_error(None, generic_error)
+                else:
+                        auth_login(request, user_obj)
+                        # Prefer the 'next' parameter if it's safe
+                        try:
+                            from django.utils.http import url_has_allowed_host_and_scheme
+                            allowed = {request.get_host()}
+                            if next_param and url_has_allowed_host_and_scheme(next_param, allowed_hosts=allowed):
+                                return redirect(next_param)
+                        except Exception:
+                            pass
+                        redirect_to = getattr(settings, 'LOGIN_REDIRECT_URL', '/')
+                        return redirect(redirect_to)
+            except Exception:
+                # missing profile -> treat as not registered
+                form.add_error(None, generic_error)
+        else:
+            # keep generic message; AuthenticationForm already adds non_field_errors
+            error = generic_error
+    else:
+        form = AuthenticationForm()
+
+    # GET or failed POST
+    return render(request, 'repairs/login.html', {'error': error, 'form': form})
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
+from .models import StaffProfile
+
+@login_required
+def dashboard(request):
+    user = request.user
+
+    # if admin user -> send to admin panel
+    if user.is_superuser or user.is_staff:
+        return redirect('/admin/')
+
+    try:
+        profile = user.staffprofile
+    except StaffProfile.DoesNotExist:
+        return HttpResponse("Role not assigned. Contact admin.")
+
+    # Role-based redirect
+    if profile.role == 'store':
+        return redirect('repairs:store_dashboard')
+
+    if profile.role == 'warehouse':
+        return redirect('repairs:warehouse_dashboard')
+
+    return HttpResponse("Invalid role. Contact admin.")
+
+
+from django.contrib.auth.decorators import user_passes_test
+
+def role_required(role):
+    def check(user):
+        try:
+            return user.staffprofile.role == role
+        except:
+            return False
+    return user_passes_test(check, login_url='/login/')
+
+
+@login_required
+@store_required
+def store_dashboard(request):
+    profile = request.user.staffprofile
+    jobs = RepairJob.objects.filter(store=profile.store).order_by('-created_at')
+    return render(request, 'repairs/store_dashboard.html', {'jobs': jobs})
+
+
+@login_required
+@warehouse_required
+def warehouse_dashboard(request):
+    jobs = RepairJob.objects.filter(status__in=['dispatched', 'received', 'repairing']).order_by('-updated_at')
+    return render(request, 'repairs/warehouse_dashboard.html', {'jobs': jobs})
