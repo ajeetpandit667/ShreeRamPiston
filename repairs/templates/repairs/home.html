@@ -4,72 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shree Ram Piston - Repair Service</title>
-    <!-- Include Tailwind CSS from CDN -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'repairs/theme.css' %}">
 </head>
-<body class="bg-gray-100">
+<body>
     <!-- Navigation Bar (standardized) -->
-    <nav class="bg-blue-600 text-white shadow-lg">
-        <div class="container mx-auto px-6 py-4 flex items-center justify-between">
-            <div class="text-xl font-bold">Shree Ram Piston</div>
-            <div class="space-x-4">
-                <a href="{% url 'repairs:home' %}" class="hover:text-gray-200">Home</a>
-                <a href="{% url 'repairs:job_list' %}" class="hover:text-gray-200">Jobs</a>
+    <nav>
+        <div class="container flex-between" style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem;">
+            <div style="font-size: 1.25rem; font-weight: 700;">Shree Ram Piston</div>
+            <div style="display: flex; gap: 2rem;">
+                <a href="{% url 'repairs:home' %}">Home</a>
+                <a href="{% url 'repairs:job_list' %}">Jobs</a>
             </div>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <div class="container mx-auto px-6 py-8">
-        <div class="bg-white rounded-lg shadow-lg p-8">
-            <h2 class="text-2xl font-bold text-center mb-8">Create Repair Request</h2>
+    <div class="container" style="padding: 2rem 1.5rem;">
+        <div class="card">
+            <h2 style="text-align: center; margin-bottom: 2rem;">Create Repair Request</h2>
             
             <!-- Repair Request Form -->
-            <form id="reqForm" class="max-w-md mx-auto space-y-4">
+            <form id="reqForm" class="max-w-md mx-auto" style="display: grid; gap: 1rem;">
                 {% csrf_token %}
-                <div>
-                    <input type="text" name="name" placeholder="Customer Name" required
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                <div class="form-group">
+                    <input type="text" name="name" placeholder="Customer Name" required>
                 </div>
-                <div>
-                    <input type="text" name="phone" placeholder="Phone" required
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                <div class="form-group">
+                    <input type="text" name="phone" placeholder="Phone" required>
                 </div>
-                <div>
-                    <input type="email" name="email" placeholder="Email (optional)"
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                <div class="form-group">
+                    <input type="email" name="email" placeholder="Email (optional)">
                 </div>
-                <div>
-                    <input type="text" name="item" placeholder="Item Name" required
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                <div class="form-group">
+                    <input type="text" name="item" placeholder="Item Name" required>
                 </div>
-                <div>
-                    <textarea name="reason" placeholder="Damage Reason"
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 h-24"></textarea>
+                <div class="form-group">
+                    <textarea name="reason" placeholder="Damage Reason" style="height: 6rem;"></textarea>
                 </div>
-                <div>
-                    <input type="number" name="days" placeholder="Repair Days" value="2"
-                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                <div class="form-group">
+                    <input type="number" name="days" placeholder="Repair Days" value="2">
                 </div>
-                <div>
-                    <select name="store" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
+                <div class="form-group">
+                    <select name="store">
                         {% for s in stores %}
                         <option value="{{s.id}}">{{s.name}}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <button type="submit"
-                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">
+                <button type="submit" class="btn-primary" style="width: 100%;">
                     Request OTP
                 </button>
             </form>
 
             <!-- OTP Verification Section -->
-            <div id="otpDiv" style="display:none;" class="max-w-md mx-auto mt-8 space-y-4">
-                <input type="text" id="otp" placeholder="Enter OTP"
-                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500">
-                <button id="verifyBtn"
-                    class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition duration-300">
+            <div id="otpDiv" style="display:none; margin-top: 2rem;" class="max-w-md mx-auto">
+                <div class="form-group">
+                    <input type="text" id="otp" placeholder="Enter OTP">
+                </div>
+                <button id="verifyBtn" class="btn-success" style="width: 100%;">
                     Verify OTP
                 </button>
             </div>
@@ -77,12 +70,8 @@
     </div>
 
     <!-- Footer (standardized) -->
-    <footer class="bg-gray-800 text-white mt-12">
-        <div class="container mx-auto px-6 py-4">
-            <div class="text-center">
-                <p>© 2025 Shree Ram Piston. All rights reserved.</p>
-            </div>
-        </div>
+    <footer>
+        <p>© 2025 Shree Ram Piston. All rights reserved.</p>
     </footer>
 
     <script>

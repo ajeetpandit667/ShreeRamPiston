@@ -5,101 +5,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ job.job_id }} - Shree Ram Piston</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'repairs/theme.css' %}">
 </head>
-<body class="bg-gray-100">
+<body>
     <!-- Navigation Bar (standardized) -->
-    <nav class="bg-blue-600 text-white shadow-lg">
-        <div class="container mx-auto px-6 py-4 flex items-center justify-between">
-            <div class="text-xl font-bold">Shree Ram Piston</div>
-            <div class="space-x-4">
-                <a href="{% url 'repairs:home' %}" class="hover:text-gray-200">Home</a>
-                <a href="{% url 'repairs:job_list' %}" class="hover:text-gray-200">Jobs</a>
+    <nav>
+        <div class="container flex-between" style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem;">
+            <div style="font-size: 1.25rem; font-weight: 700;">Shree Ram Piston</div>
+            <div style="display: flex; gap: 2rem;">
+                <a href="{% url 'repairs:home' %}">Home</a>
+                <a href="{% url 'repairs:job_list' %}">Jobs</a>
             </div>
         </div>
     </nav>
-    <div class="container mx-auto px-6 py-8">
-        <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl mx-auto">
-            <h1 class="text-2xl font-bold mb-6 text-center">Job {{ job.job_id }}</h1>
-            <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="container" style="padding: 2rem 1.5rem; max-width: 800px;">
+        <div class="card">
+            <h1 style="text-align: center; margin-bottom: 2rem;">Job {{ job.job_id }}</h1>
+            <div class="grid grid-2" style="margin-bottom: 2rem; display: grid; gap: 1rem;">
                 <div>
-                    <p class="mb-2"><span class="font-semibold">Customer:</span> {{ job.customer.name }} / {{ job.customer.phone }}</p>
-                    <p class="mb-2"><span class="font-semibold">Store:</span> {{ job.store }}</p>
-                    <p class="mb-2"><span class="font-semibold">Item:</span> {{ job.item_name }}</p>
+                    <p style="margin-bottom: 0.5rem;"><span style="font-weight: 600;">Customer:</span> {{ job.customer.name }} / {{ job.customer.phone }}</p>
+                    <p style="margin-bottom: 0.5rem;"><span style="font-weight: 600;">Store:</span> {{ job.store }}</p>
+                    <p style="margin-bottom: 0.5rem;"><span style="font-weight: 600;">Item:</span> {{ job.item_name }}</p>
                 </div>
                 <div>
-                    <p class="mb-2"><span class="font-semibold">Status:</span> <span class="px-2 py-1 rounded bg-gray-200 text-xs">{{ job.status }}</span></p>
-                    <p class="mb-2"><span class="font-semibold">Delivery Date:</span> {{ job.delivery_date }}</p>
+                    <p style="margin-bottom: 0.5rem;"><span style="font-weight: 600;">Status:</span> <span class="badge badge-primary">{{ job.status }}</span></p>
+                    <p style="margin-bottom: 0.5rem;"><span style="font-weight: 600;">Delivery Date:</span> {{ job.delivery_date }}</p>
                 </div>
             </div>
-            <h3 class="text-lg font-semibold mb-4">Actions</h3>
-            <div class="space-y-4">
+            <h3>Actions</h3>
+            <div style="margin-bottom: 2rem; display: grid; gap: 0.5rem;">
                 {% if job.status == 'open' %}
-                <form action="{% url 'repairs:send_to_warehouse' job.job_id %}" method="post" class="inline">
+                <form action="{% url 'repairs:send_to_warehouse' job.job_id %}" method="post" style="display: inline;">
                     {% csrf_token %}
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Send to Warehouse</button>
+                    <button type="submit" class="btn-primary">Send to Warehouse</button>
                 </form>
                 {% elif job.status == 'dispatched' %}
-                <form action="{% url 'repairs:mark_received' job.job_id %}" method="post" class="inline">
+                <form action="{% url 'repairs:mark_received' job.job_id %}" method="post" style="display: inline;">
                     {% csrf_token %}
-                    <button type="submit" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">Mark as Received at Warehouse</button>
+                    <button type="submit" class="btn-warning">Mark as Received at Warehouse</button>
                 </form>
                 {% elif job.status == 'received' %}
-                <form action="{% url 'repairs:mark_ready' job.job_id %}" method="post" class="inline">
+                <form action="{% url 'repairs:mark_ready' job.job_id %}" method="post" style="display: inline;">
                     {% csrf_token %}
-                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Mark Ready (for pickup)</button>
+                    <button type="submit" class="btn-success">Mark Ready (for pickup)</button>
                 </form>
                 {% elif job.status == 'ready' %}
-                <form action="{% url 'repairs:generate_pickup_otp' job.job_id %}" method="post" class="inline">
+                <form action="{% url 'repairs:generate_pickup_otp' job.job_id %}" method="post" style="display: inline;">
                     {% csrf_token %}
-                    <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">Generate Pickup OTP</button>
+                    <button type="submit" class="btn-secondary">Generate Pickup OTP</button>
                 </form>
-                <form action="{% url 'repairs:verify_pickup' job.job_id %}" method="post" class="inline ml-2">
+                <form action="{% url 'repairs:verify_pickup' job.job_id %}" method="post" style="display: inline; margin-left: 0.5rem;">
                     {% csrf_token %}
-                    <input name="otp" placeholder="Enter pickup OTP" class="border px-2 py-1 rounded mr-2" />
-                    <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">Verify Pickup OTP (close job)</button>
+                    <input name="otp" placeholder="Enter pickup OTP" style="display: inline; width: auto; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px; margin-right: 0.5rem;" />
+                    <button type="submit" class="btn-danger" style="display: inline;">Verify OTP (close job)</button>
                 </form>
                 {% endif %}
             </div>
             
-            <h3 class="text-lg font-semibold mt-8 mb-4">Upload Photos</h3>
-            <form id="uploadForm" enctype="multipart/form-data" class="mb-6">
+            <h3>Upload Photos</h3>
+            <form id="uploadForm" enctype="multipart/form-data" style="margin-bottom: 1.5rem;">
                 {% csrf_token %}
-                <div class="flex items-center gap-4">
-                    <input type="file" name="photo" class="border p-2 rounded" accept="image/*" />
-                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Upload</button>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <input type="file" name="photo" accept="image/*" style="flex: 1;" />
+                    <button type="submit" class="btn-success">Upload</button>
                 </div>
             </form>
 
-            <h3 class="text-lg font-semibold mb-4">Uploaded Photos</h3>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+            <h3>Uploaded Photos</h3>
+            <div class="grid grid-3" style="margin-bottom: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
                 {% for p in job.photos.all %}
-                    <img src="{{ p.file.url }}" alt="Job photo" class="w-full h-40 object-cover rounded border border-gray-200 shadow-sm" />
+                    <img src="{{ p.file.url }}" alt="Job photo" style="width: 100%; height: 10rem; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" />
                 {% empty %}
-                    <p class="col-span-full text-center text-gray-500">No photos yet</p>
+                    <p style="grid-column: 1/-1; text-align: center; color: #6b7280;">No photos yet</p>
                 {% endfor %}
             </div>
 
-            <h3 class="text-lg font-semibold mt-8 mb-4">History</h3>
-            <ul class="divide-y divide-gray-200">
+            <h3>History</h3>
+            <div style="border-collapse: collapse; width: 100%; margin-bottom: 2rem;">
                 {% for h in job.history.all %}
-                <li class="py-2 text-sm text-gray-700">{{ h.timestamp }} - {{ h.from_status }} → {{ h.to_status }} - {{ h.note }}</li>
+                <div style="padding: 0.5rem 0; font-size: 0.875rem; border-bottom: 1px solid #e5e7eb;">{{ h.timestamp }} - {{ h.from_status }} → {{ h.to_status }} - {{ h.note }}</div>
                 {% empty %}
-                <li class="py-2 text-center text-gray-500">No history</li>
+                <div style="padding: 0.5rem 0; text-align: center; color: #6b7280;">No history</div>
                 {% endfor %}
-            </ul>
-            <div class="mt-8 text-center">
-                <a href="{% url 'repairs:job_list' %}" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Back to jobs</a>
+            </div>
+            <div style="margin-top: 2rem; text-align: center;">
+                <a href="{% url 'repairs:job_list' %}" class="btn-primary">Back to jobs</a>
             </div>
         </div>
     </div>
     <!-- Footer (standardized) -->
-    <footer class="bg-gray-800 text-white mt-12">
-        <div class="container mx-auto px-6 py-4">
-            <div class="text-center">
-                <p>© 2025 Shree Ram Piston. All rights reserved.</p>
-            </div>
-        </div>
+    <footer>
+        <p>© 2025 Shree Ram Piston. All rights reserved.</p>
     </footer>
 
     <script>

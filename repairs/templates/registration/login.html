@@ -13,7 +13,7 @@
 <body>
 
 <div class="auth-wrapper" id="authWrapper">
-    <div class="panel left-panel">
+    <div class="panel left-panel" style="background:rgba(0, 0, 0, 0.30)">
         <div class="form-box">
             <h2>Login</h2>
             {% if error %}
@@ -45,14 +45,14 @@
                 </div>
                 <button type="submit" class="btn">Login</button>
                 <p style="text-align: center; margin-top: 10px;">
-                    <a href="{% url 'password_reset' %}" style="color: #007bff; text-decoration: none; font-size: 14px;">Forgot Password?</a>
+                    <a href="{% url 'password_reset' %}" style="color: #ffff00ff; text-decoration: none; font-size: 14px;">Forgot Password?</a>
                 </p>
-                <p class="toggle-text">Don't have an account? <a href="#" id="showRegister">Sign Up</a></p>
+                <p class="toggle-text">Don't have an account? <a href="#" style="color: #ffff00ff" id="showRegister">Sign Up</a></p>
             </form>
         </div>
     </div>
 
-        <div class="panel right-panel">
+        <div class="panel right-panel" style="background:rgba(0, 0, 0, 0.30)">
             <div class="form-box">
                 <h2>Register</h2>
                 <form method="POST" action="/register/" class="auth-form register-form" id="registerForm">
@@ -78,7 +78,7 @@
                         <input type="tel" name="mobile" id="regMobile" pattern="[0-9]{7,15}" required />
                     </div>
                     <button type="submit" class="btn">Register</button>
-                    <p class="toggle-text">Already have an account? <a href="#" id="showLogin">Login</a></p>
+                    <p class="toggle-text">Already have an account? <a href="#"style="color: #ffff00ff;" id="showLogin">Login</a></p>
                 </form>
             </div>
         </div>

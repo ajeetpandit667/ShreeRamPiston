@@ -5,49 +5,47 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jobs - Shree Ram Piston</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'repairs/theme.css' %}">
+  <style>body { display: flex; flex-direction: column; min-height: 100vh; }</style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
+<body>
   <!-- Navigation Bar (standardized) -->
-  <nav class="bg-blue-600 text-white shadow-lg">
-    <div class="container mx-auto px-6 py-4 flex items-center justify-between">
-      <div class="text-xl font-bold">Shree Ram Piston</div>
-      <div class="space-x-4">
-        <a href="{% url 'repairs:home' %}" class="hover:text-gray-200">Home</a>
-        <a href="{% url 'repairs:job_list' %}" class="hover:text-gray-200">Jobs</a>
+  <nav>
+    <div class="container flex-between" style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem;">
+      <div style="font-size: 1.25rem; font-weight: 700;">Shree Ram Piston</div>
+      <div style="display: flex; gap: 2rem;">
+        <a href="{% url 'repairs:home' %}">Home</a>
+        <a href="{% url 'repairs:job_list' %}">Jobs</a>
       </div>
     </div>
   </nav>
-  <main class="flex-grow">
-    <div class="container mx-auto px-6 py-8">
-      <div class="bg-white rounded-lg shadow-lg p-8">
-      <h1 class="text-2xl font-bold text-center mb-8">Recent Jobs</h1>
-      <ul class="divide-y divide-gray-200">
+  <main style="flex: 1;">
+    <div class="container" style="padding: 2rem 1.5rem;">
+      <div class="card">
+      <h1 style="text-align: center; margin-bottom: 2rem;">Recent Jobs</h1>
+      <div style="border-collapse: collapse; width: 100%;">
         {% for j in jobs %}
-        <li class="py-4 flex items-center justify-between">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid #e5e7eb;">
           <div>
-            <a href="{% url 'repairs:job_detail' j.job_id %}" class="text-blue-600 font-semibold hover:underline">{{ j.job_id }}</a>
-            <span class="ml-2 text-gray-700">{{ j.customer.phone }}</span>
-            <span class="ml-2 px-2 py-1 rounded bg-gray-200 text-xs">{{ j.status }}</span>
+            <a href="{% url 'repairs:job_detail' j.job_id %}" style="font-weight: 600;">{{ j.job_id }}</a>
+            <span style="margin-left: 1rem; color: #6b7280;">{{ j.customer.phone }}</span>
+            <span class="badge badge-primary" style="margin-left: 1rem;">{{ j.status }}</span>
           </div>
-        </li>
+        </div>
         {% empty %}
-        <li class="py-4 text-center text-gray-500">No jobs</li>
+        <div style="padding: 1rem; text-align: center; color: #6b7280;">No jobs</div>
         {% endfor %}
-      </ul>
-      <div class="mt-8 text-center">
-        <a href="{% url 'repairs:home' %}" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Create new request</a>
+      </div>
+      <div style="margin-top: 2rem; text-align: center;">
+        <a href="{% url 'repairs:home' %}" class="btn-primary">Create new request</a>
       </div>
       </div>
     </div>
   </main>
   <!-- Footer (standardized) -->
-  <footer class="bg-gray-800 text-white mt-12">
-    <div class="container mx-auto px-6 py-4">
-      <div class="text-center">
-        <p>© 2025 Shree Ram Piston. All rights reserved.</p>
-      </div>
-    </div>
+  <footer>
+    <p>© 2025 Shree Ram Piston. All rights reserved.</p>
   </footer>
 </body>
 </html>

@@ -13,7 +13,7 @@ body::before {
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  filter: blur(8px) brightness(0.9);
+  filter: blur(0px) brightness(1.4);
   transform: scale(1.03);
   z-index: -2;
 }
@@ -23,7 +23,7 @@ body::after {
   content: "";
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.25);
+  background: rgba(0,0,0,0.3);
   z-index: -1;
 }
 
@@ -41,12 +41,12 @@ body{font-family:Inter, Arial, sans-serif; margin:0; background:#f3f4f6;}
 
 
 .auth-wrapper{
-  width:860px;
+  width:760px;
   max-width:95%;
-  height:520px;
-  margin:60px auto;
+  height:506px;
+  margin:76px auto;
   position:relative;
-  box-shadow:0 10px 30px rgba(2,6,23,0.15);
+  box-shadow:0 8px 24px rgba(0,0,0);
   border-radius:12px;
   overflow:hidden;
   /* ensure above the blurred background */
@@ -79,16 +79,25 @@ body{font-family:Inter, Arial, sans-serif; margin:0; background:#f3f4f6;}
 .auth-wrapper.register-active .left-panel{transform:translateX(-100%); background:var(--primary)}
 .auth-wrapper.register-active .right-panel{transform:translateX(0); background:var(--dark)}
 
-.form-box, .info-box{width:100%; max-width:360px}
-.form-box h2{margin:0 0 18px 0; font-size:1.6rem}
-.field{margin-bottom:14px}
+.form-box, .info-box{width:100%; max-width:320px}
+.form-box h2{margin:0 0 14px 0; font-size:1.45rem}
+.form-box{padding:20px}
+.field{margin-bottom:1px}
 label{display:block;margin-bottom:6px;font-size:0.9rem;opacity:0.9}
-input[type="text"], input[type="password"]{width:100%; padding:12px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.06); color:var(--white); outline:none}
+input[type="text"], input[type="password"], input[type="email"], input[type="tel"], textarea, select{
+  width:100%;
+  padding:10px 12px;
+  border-radius:8px;
+  border:1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.18);
+  color: #111827;
+  outline:none;
+}
 input::placeholder{color:rgba(255,255,255,0.6)}
 input:focus{box-shadow:0 6px 18px rgba(2,6,23,0.2)}
-.btn{display:inline-block;margin-top:8px;padding:10px 18px;background:var(--white); color:var(--dark); border-radius:8px; border:none; font-weight:600; cursor:pointer}
-.toggle-text{margin-top:12px;color:rgba(255,255,255,0.85)}
-.toggle-text a{color:rgba(255,255,255,0.95); text-decoration:underline; cursor:pointer}
+.btn{display:inline-block;margin-top:8px;padding:10px 18px;background:linear-gradient(44deg, #b9b6a2, #e49f33);; color:var(--dark); border-radius:8px; border:none; font-weight:600; cursor:pointer}
+.toggle-text{margin-top:10px;color:rgba(0,0,0,0.7)}
+.toggle-text a{color:var(--primary); text-decoration:underline; cursor:pointer}
 
 @media (max-width:720px){.auth-wrapper{flex-direction:column;height:auto} .panel{width:100%; transform:none!important} .auth-wrapper.register-active .right-panel{transform:none} .auth-wrapper.register-active .left-panel{transform:none}}
 
@@ -99,7 +108,10 @@ input:focus{box-shadow:0 6px 18px rgba(2,6,23,0.2)}
 .form-box{
   position: relative;
   overflow: hidden;
-  background: rgba(255,255,255,0.6); /* lighten so form controls remain visible */
+  background: rgba(255,255,255,0.38); /* translucent to show background */
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(2px);
+  border-radius: 10px;
 }
 .form-box::before{
   content: "";
@@ -112,14 +124,27 @@ input:focus{box-shadow:0 6px 18px rgba(2,6,23,0.2)}
   filter: blur(6px) brightness(0.95);
   transform: scale(1.08);
   z-index: 0;
+  opacity: 0.9;
 }
 .form-box > * { position: relative; z-index: 1; }
 
+/* slightly reduced card shadow to blend with background */
+.form-box{ box-shadow: 0 6px 18px rgba(2,6,23,0.12); }
+
 /* When panels have dark background (original dark variant) we lighten inputs for contrast */
 .left-panel .form-box{
-  background: rgba(0,0,0,0.45);
+  background: rgba(0,0,0,0.30);
 }
-.left-panel .form-box::before{ filter: blur(6px) brightness(0.55); }
-.left-panel input, .left-panel textarea { background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.08); }
+.left-panel .form-box::before{ filter: blur(2px) brightness(0.55); }
+.left-panel input, .left-panel textarea { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.12); }
+
+/* Make the register panel match the login look when active */
+.auth-wrapper.register-active .right-panel .form-box{
+  background: rgba(0,0,0,0.30);
+}
+.auth-wrapper.register-active .right-panel .form-box::before{ filter: blur(2px) brightness(0.55); }
+.auth-wrapper.register-active .right-panel input, .auth-wrapper.register-active .right-panel textarea { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.12); }
+.auth-wrapper.register-active .right-panel .toggle-text{ color: rgba(255,255,255,0.85); }
+.auth-wrapper.register-active .right-panel .toggle-text a{ color: rgba(255,255,255,0.95); }
 
 

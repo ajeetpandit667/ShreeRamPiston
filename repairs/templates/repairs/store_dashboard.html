@@ -3,72 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <title>Store Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'repairs/theme.css' %}">
 </head>
-<body class="bg-gray-900 text-white">
+<body>
 
 <!-- NAVBAR -->
-<div class="bg-gray-800 p-4 flex justify-between items-center">
-    <h1 class="text-2xl font-bold">Store Dashboard</h1>
+<nav style="display: flex; justify-content: space-between; align-items: center; padding: 0;">
+    <div style="padding: 1rem 1.5rem; font-size: 1.5rem; font-weight: 700;">Store Dashboard</div>
 
-    <form method="POST" action="{% url 'logout' %}">
+    <form method="POST" action="{% url 'logout' %}" style="padding-right: 1.5rem;">
         {% csrf_token %}
-        <button class="px-4 py-2 bg-red-500 hover:bg-red-600 rounded">Logout</button>
+        <button class="btn-danger">Logout</button>
     </form>
-</div>
+</nav>
 
 <!-- Create Repair Request -->
-<div class="p-6">
-    <a href="{% url 'repairs:home' %}" 
-       class="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-lg font-semibold rounded">
+<div style="padding: 1.5rem;">
+    <a href="{% url 'repairs:home' %}%" 
+       class="btn-primary" style="font-size: 1.125rem;">
         + Create New Repair Request
     </a>
 </div>
 
 <!-- Job List -->
-<div class="p-6">
-    <h2 class="text-xl font-bold mb-4">Your Repair Jobs</h2>
+<div style="padding: 1.5rem;">
+    <h2>Your Repair Jobs</h2>
 
-    <div class="overflow-x-auto">
-        <table class="min-w-full bg-gray-800 rounded">
+    <div style="overflow-x: auto;">
+        <table>
             <thead>
-                <tr class="bg-gray-700 text-left">
-                    <th class="py-3 px-4">Job ID</th>
-                    <th class="py-3 px-4">Customer</th>
-                    <th class="py-3 px-4">Item</th>
-                    <th class="py-3 px-4">Status</th>
-                    <th class="py-3 px-4">Actions</th>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Customer</th>
+                    <th>Item</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
 
             <tbody>
                 {% for job in jobs %}
-                <tr class="border-b border-gray-700">
-                    <td class="py-3 px-4">
-                        <a href="{% url 'repairs:job_detail' job.job_id %}" class="text-orange-400">
+                <tr>
+                    <td>
+                        <a href="{% url 'repairs:job_detail' job.job_id %}">
                             {{ job.job_id }}
                         </a>
                     </td>
-                    <td class="py-3 px-4">{{ job.customer.phone }}</td>
-                    <td class="py-3 px-4">{{ job.item }}</td>
+                    <td>{{ job.customer.phone }}</td>
+                    <td>{{ job.item }}</td>
 
-                    <td class="py-3 px-4">
-                        <span class="
-                            px-3 py-1 rounded text-white
-                            {% if job.status == 'open' %} bg-yellow-500
-                            {% elif job.status == 'sent' %} bg-blue-500
-                            {% elif job.status == 'ready' %} bg-green-600
-                            {% elif job.status == 'closed' %} bg-gray-500
+                    <td>
+                        <span class="badge
+                            {% if job.status == 'open' %} badge-warning
+                            {% elif job.status == 'sent' %} badge-primary
+                            {% elif job.status == 'ready' %} badge-success
+                            {% elif job.status == 'closed' %} badge-secondary
                             {% endif %}
                         ">
                             {{ job.status }}
                         </span>
                     </td>
 
-                    <td class="py-3 px-4">
+                    <td>
                         {% if job.status == 'open' %}
                         <a href="{% url 'repairs:send_to_warehouse' job.job_id %}"
-                           class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded text-white">
+                           class="btn-secondary" style="font-size: 0.875rem;">
                             Send to Warehouse
                         </a>
                         {% endif %}
@@ -76,7 +76,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="text-center py-4 text-gray-400">
+                    <td colspan="5" style="text-align: center; padding: 1rem;">
                         No repair jobs found.
                     </td>
                 </tr>
