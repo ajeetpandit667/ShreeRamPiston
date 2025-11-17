@@ -5,36 +5,122 @@
     <title>Warehouse Dashboard</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'repairs/theme.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
 
 <!-- NAVBAR -->
-<nav style="display: flex; justify-content: space-between; align-items: center; padding: 0;">
-    <div style="padding: 1rem 1.5rem; font-size: 1.5rem; font-weight: 700;">Warehouse Dashboard</div>
-    <form method="POST" action="{% url 'logout' %}" style="padding-right: 1.5rem;">
-        {% csrf_token %}
-        <button class="btn-danger">Logout</button>
-    </form>
+<nav style="display:flex; justify-content:space-between; align-items:center; padding:0;">
+    <div style="padding:1rem 1.5rem; font-size:1.5rem; font-weight:700;">Warehouse Dashboard</div>
+
+    <a href="{% url 'logout' %}" 
+       class="btn-danger"
+       style="margin-right:1.5rem; padding:0.5rem 1rem; text-decoration:none; color:white;">
+        Logout
+    </a>
 </nav>
 
+<!-- Search / Filters -->
+<div style="padding:0 1.5rem 1.5rem 1.5rem;">
+    <form method="GET" style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-end;">
+
+        <div style="min-width:160px;">
+            <label style="display:block; font-size:0.85rem; color:yellow;">Job ID</label>
+            <input type="text" name="job_id" value="{{ request.GET.job_id }}"
+                   style="padding:0.5rem 0.75rem; border-radius:8px; background:#111827;
+                          border:1px solid #4f555fff; color:#fff; width:100%;">
+        </div>
+
+        <div style="min-width:160px;">
+            <label style="display:block; font-size:0.85rem; color:yellow;">Customer Phone</label>
+            <input type="text" name="phone" value="{{ request.GET.phone }}"
+                   style="padding:0.5rem 0.75rem; border-radius:8px; background:#111827;
+                          border:1px solid #374151; color:#fff; width:100%;">
+        </div>
+
+        <div style="min-width:160px;">
+            <label style="display:block; font-size:0.85rem; color:yellow;">Status</label>
+            <select name="status"
+                    style="padding:0.5rem 0.75rem; border-radius:8px; background:#111827;
+                           border:1px solid #374151; color:#fff; width:100%;">
+                <option value="">All</option>
+                <option value="open" {% if request.GET.status == 'open' %}selected{% endif %}>Open</option>
+                <option value="dispatched" {% if request.GET.status == 'dispatched' %}selected{% endif %}>Dispatched</option>
+                <option value="received" {% if request.GET.status == 'received' %}selected{% endif %}>Received</option>
+                <option value="repairing" {% if request.GET.status == 'repairing' %}selected{% endif %}>Repairing</option>
+                <option value="ready" {% if request.GET.status == 'ready' %}selected{% endif %}>Ready</option>
+                <option value="not_repairable" {% if request.GET.status == 'not_repairable' %}selected{% endif %}>Not Repairable</option>
+                <option value="dispatched_back" {% if request.GET.status == 'dispatched_back' %}selected{% endif %}>Dispatched Back</option>
+            </select>
+        </div>
+
+        <div style="align-self:flex-end;">
+            <button class="btn-primary" type="submit" style="padding:0.5rem 1rem;">Search</button>
+        </div>
+
+    </form>
+</div>
+
+<!-- Stats Chart -->
+<div style="padding:0 1.5rem 1.5rem 1.5rem;">
+    <div style="background:#1f2937; padding:1rem; border-radius:8px;">
+        <h2 style="margin:0 0 1rem;">Jobs Created Per Week</h2>
+        <canvas id="jobsChart"></canvas>
+    </div>
+</div>
+
+<script>
+fetch("{% url 'repairs:job_stats' %}")
+.then(r => r.json())
+.then(data => {
+    new Chart(document.getElementById('jobsChart'), {
+        type: 'line',
+        data: {
+            labels: data.weeks,
+            datasets: [{
+                label: "Jobs per Week",
+                data: data.counts,
+                borderWidth: 3,
+                borderColor: '#0ea5e9',
+                backgroundColor: 'rgba(14,165,233,0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: '#fff' } }
+            },
+            scales: {
+                y: { ticks: { color:'#9ca3af' }, grid:{ color:'#374151' } },
+                x: { ticks: { color:'#9ca3af' }, grid:{ color:'#374151' } }
+            }
+        }
+    });
+});
+</script>
+
 <!-- Job List -->
-<div style="padding: 1.5rem;">
+<div style="padding:1.5rem;">
     <h2>Jobs in Warehouse</h2>
 
-    <div style="overflow-x: auto;">
-        <table>
+    <div style="overflow-x:auto;">
+        <table style="background: rgba(14, 165, 233, 0.25);color: var(--white);backdrop-filter: blur(6px);">
             <thead>
                 <tr>
                     <th>Job ID</th>
                     <th>Customer</th>
                     <th>Item</th>
                     <th>Status</th>
+                    <th>Progress</th>
                     <th>Actions</th>
                 </tr>
             </thead>
 
             <tbody>
-                {% for job in jobs %}
+            {% for job in jobs %}
                 <tr>
                     <td>
                         <a href="{% url 'repairs:job_detail' job.job_id %}">
@@ -43,7 +129,8 @@
                     </td>
 
                     <td>{{ job.customer.phone }}</td>
-                    <td>{{ job.item }}</td>
+
+                    <td>{{ job.item_name }}</td>
 
                     <td>
                         <span class="badge
@@ -51,46 +138,84 @@
                             {% elif job.status == 'received' %} badge-primary
                             {% elif job.status == 'repairing' %} badge-secondary
                             {% elif job.status == 'ready' %} badge-success
+                            {% elif job.status == 'not_repairable' %} badge-danger
+                            {% elif job.status == 'dispatched_back' %} badge-info
                             {% endif %}
                         ">
                             {{ job.status }}
                         </span>
                     </td>
 
-                    <td style="display: flex; gap: 0.5rem;">
+                    <!-- Progress bar -->
+                    <td style="min-width:140px;">
+                        <div class="progress-container">
+                            <div class="progress-bar"
+                                 style="
+                                    width:
+                                        {% if job.status == 'dispatched' %}20%
+                                        {% elif job.status == 'received' %}40%
+                                        {% elif job.status == 'repairing' %}70%
+                                        {% elif job.status == 'ready' %}100%
+                                        {% elif job.status == 'not_repairable' %}100%
+                                        {% elif job.status == 'dispatched_back' %}100%
+                                        {% else %}10%
+                                        {% endif %};
+                                    background:
+                                        {% if job.status == 'not_repairable' %}#dc2626
+                                        {% elif job.status == 'dispatched_back' %}#3b82f6
+                                        {% else %}#10b981
+                                        {% endif %}
+                                 ">
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Actions -->
+                    <td style="display:flex; gap:0.5rem;">
 
                         {% if job.status == 'dispatched' %}
-                        <a href="{% url 'repairs:mark_received' job.job_id %}"
-                           class="btn-primary" style="font-size: 0.875rem;">
-                            Mark Received
-                        </a>
+                        <form method="POST" action="{% url 'repairs:mark_received' job.job_id %}">
+                            {% csrf_token %}
+                            <button class="btn-primary" style="font-size:0.875rem;">Mark Received</button>
+                        </form>
                         {% endif %}
 
                         {% if job.status == 'received' %}
-                        <a href="{% url 'repairs:mark_repairing' job.job_id %}"
-                           class="btn-secondary" style="font-size: 0.875rem;">
-                            Start Repair
-                        </a>
+                        <form method="POST" action="{% url 'repairs:mark_repairing' job.job_id %}">
+                            {% csrf_token %}
+                            <button class="btn-secondary" style="font-size:0.875rem;">Start Repair</button>
+                        </form>
                         {% endif %}
 
                         {% if job.status == 'repairing' %}
-                        <a href="{% url 'repairs:mark_ready' job.job_id %}"
-                           class="btn-success" style="font-size: 0.875rem;">
-                            Mark Ready
-                        </a>
+                        <form method="POST" action="{% url 'repairs:mark_ready' job.job_id %}">
+                            {% csrf_token %}
+                            <button class="btn-success" style="font-size:0.875rem;">Mark Ready</button>
+                        </form>
+
+                        <form method="POST" action="{% url 'repairs:mark_not_repairable' job.job_id %}">
+                            {% csrf_token %}
+                            <button class="btn-danger" style="font-size:0.875rem;">Not Repairable</button>
+                        </form>
+                        {% endif %}
+
+                        {% if job.status == 'ready' %}
+                        <form method="POST" action="{% url 'repairs:dispatch_back' job.job_id %}">
+                            {% csrf_token %}
+                            <button class="btn-primary" style="font-size:0.875rem;">Dispatch Back</button>
+                        </form>
                         {% endif %}
 
                     </td>
+                </tr>
 
-                </tr>
-                {% empty %}
+            {% empty %}
                 <tr>
-                    <td colspan="5" style="text-align: center; padding: 1rem;">
-                        No jobs found in warehouse.
-                    </td>
+                    <td colspan="6" style="text-align:center; padding:1rem;">No jobs found in warehouse.</td>
                 </tr>
-                {% endfor %}
+            {% endfor %}
             </tbody>
+
         </table>
     </div>
 </div>

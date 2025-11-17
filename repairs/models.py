@@ -3,19 +3,25 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from datetime import timedelta
 import uuid
 
 User = get_user_model()
 
 
+# Upload Path for Job Photos
 def job_upload_path(instance, filename):
-    # store uploaded job photos under jobs/<job_id>/filename
     return f"jobs/{instance.job.job_id}/{filename}"
 
 
+# Generate Job ID
 def generate_job_id():
     return f"JOB-{uuid.uuid4().hex[:8].upper()}"
 
+
+# ============================
+# Store / Customer / Warehouse
+# ============================
 
 class Store(models.Model):
     name = models.CharField(max_length=200)
@@ -58,38 +64,49 @@ class Courier(models.Model):
         return self.name
 
 
+# ============================
+# Repair Job Model
+# ============================
+
 class RepairJob(models.Model):
+
     STATUS_CHOICES = [
         ('open', 'Open'),
         ('dispatched', 'Dispatched to Warehouse'),
         ('received', 'Received at Warehouse'),
-        ('sent_vendor', 'Sent to Vendor'),
-        ('repaired', 'Repaired'),
-        ('replacement', 'Replacement'),
+        ('repairing', 'Repairing'),
+        ('not_repairable', 'Not Repairable'),
         ('ready', 'Ready for Pickup'),
+        ('dispatched_back', 'Dispatched Back to Store'),
         ('closed', 'Closed'),
     ]
 
     job_id = models.CharField(max_length=50, default=generate_job_id, unique=True)
     store = models.ForeignKey(Store, on_delete=models.SET_NULL, null=True)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
+
     item_name = models.CharField(max_length=200)
     item_details = models.TextField(blank=True)
     damage_reason = models.TextField(blank=True)
+
     repair_days = models.IntegerField(default=2)
     delivery_date = models.DateField(null=True, blank=True)
+
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='open')
+
     courier = models.ForeignKey(Courier, on_delete=models.SET_NULL, null=True, blank=True)
     awb = models.CharField(max_length=200, blank=True)
+
     otp = models.CharField(max_length=6, blank=True)
     otp_expiry = models.DateTimeField(null=True, blank=True)
+
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def compute_delivery_date(self):
-        if self.repair_days is not None:
-            return (timezone.now().date() + timezone.timedelta(days=self.repair_days))
+        if self.repair_days:
+            return timezone.now().date() + timedelta(days=self.repair_days)
         return None
 
     def save(self, *args, **kwargs):
@@ -100,6 +117,10 @@ class RepairJob(models.Model):
     def __str__(self):
         return self.job_id
 
+
+# ============================
+# Photos / History
+# ============================
 
 class JobPhoto(models.Model):
     job = models.ForeignKey(RepairJob, on_delete=models.CASCADE, related_name='photos')
@@ -115,6 +136,10 @@ class StatusHistory(models.Model):
     note = models.TextField(blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
+
+# ============================
+# OTP / Notifications
+# ============================
 
 class PendingCreate(models.Model):
     temp_id = models.CharField(max_length=60, unique=True)
@@ -133,13 +158,17 @@ class OtpLog(models.Model):
 
 
 class NotifyLog(models.Model):
-    channel = models.CharField(max_length=20)  # whatsapp/sms/email
+    channel = models.CharField(max_length=20)   # sms/email/whatsapp/mock
     to = models.CharField(max_length=50)
     type = models.CharField(max_length=80)
     payload = models.JSONField(null=True, blank=True)
     result = models.TextField(blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
+
+# ============================
+# Staff / Login Profiles
+# ============================
 
 class StaffProfile(models.Model):
     ROLE_CHOICES = [
@@ -158,14 +187,9 @@ class StaffProfile(models.Model):
 
 
 class LoginProfile(models.Model):
-    """Simple marker/profile to indicate a user has completed registration and is allowed to log in.
-
-    This is intentionally minimal: it uses OneToOneField to User and an `is_registered` flag.
-    """
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='loginprofile')
     is_registered = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"LoginProfile({self.user.username}) registered={self.is_registered}"
-

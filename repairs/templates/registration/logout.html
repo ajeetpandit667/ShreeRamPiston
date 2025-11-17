@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logout - Shree Ram Piston</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'repairs/theme.css' %}">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav>
+        <div class="container flex-between" style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem;">
+            <div style="font-size: 1.25rem; font-weight: 700;">Shree Ram Piston</div>
+            <div style="display: flex; gap: 2rem;">
+                <a href="{% url 'repairs:home' %}">Home</a>
+                <a href="{% url 'repairs:job_list' %}">Jobs</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="padding: 2rem 1.5rem;">
+        <div class="card max-w-md mx-auto">
+
+            <h2 class="text-center" style="margin-bottom: 1rem;">You have been logged out</h2>
+            <p class="text-center" style="color: var(--text-light); margin-bottom: 2rem;">
+                Thank you for using Shree Ram Piston dashboard.
+            </p>
+
+            <div style="text-align: center;">
+                <a href="{% url 'login' %}" class="btn-primary" style="width: 100%; display: block; text-align: center;">
+                    Login Again
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025 Shree Ram Piston. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>

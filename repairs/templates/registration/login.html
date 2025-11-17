@@ -41,7 +41,10 @@
                 </div>
                 <div class="field">
                     <label>Password</label>
-                    <input type="password" name="password" required />
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="password" id="loginPassword" required style="flex: 1;" />
+                        <span class="eye-toggle" id="loginEye" style="position: absolute; right: 12px; cursor: pointer; font-size: 1.2rem; user-select: none;">👁️</span>
+                    </div>
                 </div>
                 <button type="submit" class="btn">Login</button>
                 <p style="text-align: center; margin-top: 10px;">
@@ -67,11 +70,17 @@
                     </div>
                     <div class="field">
                         <label>Password</label>
-                        <input type="password" name="password" id="regPassword" required />
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" name="password" id="regPassword" required style="flex: 1;" />
+                            <span class="eye-toggle" id="regPasswordEye" style="position: absolute; right: 12px; cursor: pointer; font-size: 1.2rem; user-select: none;">👁️</span>
+                        </div>
                     </div>
                     <div class="field">
                         <label>Confirm password</label>
-                        <input type="password" name="confirm_password" id="regConfirm" required />
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input type="password" name="confirm_password" id="regConfirm" required style="flex: 1;" />
+                            <span class="eye-toggle" id="regConfirmEye" style="position: absolute; right: 12px; cursor: pointer; font-size: 1.2rem; user-select: none;">👁️</span>
+                        </div>
                     </div>
                     <div class="field">
                         <label>Mobile number</label>
@@ -102,6 +111,27 @@
 
             showRegister.addEventListener('click', enableRegister);
             showLogin.addEventListener('click', enableLogin);
+
+            // Password visibility toggle
+            function setupPasswordToggle(inputId, eyeId) {
+                const input = document.getElementById(inputId);
+                const eye = document.getElementById(eyeId);
+                
+                if (input && eye) {
+                    eye.addEventListener('click', function() {
+                        const type = input.type === 'password' ? 'text' : 'password';
+                        input.type = type;
+                        eye.textContent = type === 'password' ? '👁️' : '👁️‍🗨️';
+                    });
+                }
+            }
+
+            // Setup password toggles for login
+            setupPasswordToggle('loginPassword', 'loginEye');
+            
+            // Setup password toggles for register
+            setupPasswordToggle('regPassword', 'regPasswordEye');
+            setupPasswordToggle('regConfirm', 'regConfirmEye');
 
             // Basic client-side validation for register form
             const registerForm = document.getElementById('registerForm');

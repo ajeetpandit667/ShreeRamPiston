@@ -7,130 +7,162 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'repairs/theme.css' %}">
 </head>
+
 <body>
-    <!-- Navigation Bar (standardized) -->
-    <nav>
-        <div class="container flex-between" style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem;">
-            <div style="font-size: 1.25rem; font-weight: 700;">Shree Ram Piston</div>
-            <div style="display: flex; gap: 2rem;">
-                <a href="{% url 'repairs:home' %}">Home</a>
-                <a href="{% url 'repairs:job_list' %}">Jobs</a>
-            </div>
-        </div>
-    </nav>
 
-    <!-- Main Content -->
-    <div class="container" style="padding: 2rem 1.5rem;">
-        <div class="card">
-            <h2 style="text-align: center; margin-bottom: 2rem;">Create Repair Request</h2>
-            
-            <!-- Repair Request Form -->
-            <form id="reqForm" class="max-w-md mx-auto" style="display: grid; gap: 1rem;">
-                {% csrf_token %}
-                <div class="form-group">
-                    <input type="text" name="name" placeholder="Customer Name" required>
-                </div>
-                <div class="form-group">
-                    <input type="text" name="phone" placeholder="Phone" required>
-                </div>
-                <div class="form-group">
-                    <input type="email" name="email" placeholder="Email (optional)">
-                </div>
-                <div class="form-group">
-                    <input type="text" name="item" placeholder="Item Name" required>
-                </div>
-                <div class="form-group">
-                    <textarea name="reason" placeholder="Damage Reason" style="height: 6rem;"></textarea>
-                </div>
-                <div class="form-group">
-                    <input type="number" name="days" placeholder="Repair Days" value="2">
-                </div>
-                <div class="form-group">
-                    <select name="store">
-                        {% for s in stores %}
-                        <option value="{{s.id}}">{{s.name}}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn-primary" style="width: 100%;">
-                    Request OTP
-                </button>
-            </form>
-
-            <!-- OTP Verification Section -->
-            <div id="otpDiv" style="display:none; margin-top: 2rem;" class="max-w-md mx-auto">
-                <div class="form-group">
-                    <input type="text" id="otp" placeholder="Enter OTP">
-                </div>
-                <button id="verifyBtn" class="btn-success" style="width: 100%;">
-                    Verify OTP
-                </button>
-            </div>
+<!-- Navigation Bar -->
+<nav>
+    <div class="container flex-between" style="max-width:1200px; margin:0 auto; padding:0 1.5rem;">
+        <div style="font-size:1.25rem; font-weight:700;">Shree Ram Piston</div>
+        <div style="display:flex; gap:2rem;">
+            <a href="{% url 'repairs:home' %}">Home</a>
+            <a href="{% url 'repairs:job_list' %}">Jobs</a>
         </div>
     </div>
+</nav>
 
-    <!-- Footer (standardized) -->
-    <footer>
-        <p>© 2025 Shree Ram Piston. All rights reserved.</p>
-    </footer>
+<!-- Main Content -->
+<div class="container" style="padding:2rem 1.5rem;">
+    <div class="card">
 
-    <script>
-    // Helper to read the CSRF token cookie (Django sets 'csrftoken')
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                // Does this cookie string begin with the name we want?
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+        <h2 style="text-align:center; margin-bottom:2rem;">
+            Create Repair Request
+        </h2>
+
+        <!-- Request Form -->
+        <form id="reqForm" style="display:grid; gap:1rem; max-width:450px; margin:auto;">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <input type="text" name="customer_name" placeholder="Customer Name" required>
+            </div>
+
+            <div class="form-group">
+                <input type="text" name="phone" placeholder="Phone Number" required>
+            </div>
+
+            <div class="form-group">
+                <input type="email" name="email" placeholder="Email (optional)">
+            </div>
+
+            <div class="form-group">
+                <!-- FIXED: item → item_name -->
+                <input type="text" name="item_name" placeholder="Item Name" required>
+            </div>
+
+            <div class="form-group">
+                <!-- FIXED: reason → damage_reason -->
+                <textarea name="damage_reason" placeholder="Damage Reason" style="height:6rem;"></textarea>
+            </div>
+
+            <div class="form-group">
+                <!-- FIXED: days → repair_days -->
+                <input type="number" name="repair_days" placeholder="Repair Days" value="2">
+            </div>
+
+            <div class="form-group">
+                <select name="store" required>
+                    {% for s in stores %}
+                    <option value="{{ s.id }}">{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width:100%;">Request OTP</button>
+        </form>
+
+        <!-- OTP UI -->
+        <div id="otpDiv" style="display:none; margin-top:2rem; max-width:450px; margin:auto;">
+            <div class="form-group">
+                <input type="text" id="otp" placeholder="Enter OTP">
+            </div>
+            <button id="verifyBtn" class="btn-success" style="width:100%;">Verify OTP</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- Footer -->
+<footer>
+    <p>© 2025 Shree Ram Piston. All rights reserved.</p>
+</footer>
+
+
+<script>
+// Get csrftoken
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + "=")) {
+                cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
             }
         }
-        return cookieValue;
     }
+    return cookieValue;
+}
+const csrftoken = getCookie("csrftoken");
 
-    const csrftoken = getCookie('csrftoken');
 
-    const form = document.getElementById('reqForm');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const data = new FormData(form);
-        const res = await fetch('/repairs/request-otp/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrftoken },
-            body: data,
-            credentials: 'same-origin'
-        });
-        const json = await res.json();
-        if (json.success) {
-            alert("OTP sent (check your email or console)");
-            localStorage.setItem('temp_id', json.temp_id);
-            document.getElementById('otpDiv').style.display = 'block';
-        } else alert(json.error);
+// Handle Request OTP
+const form = document.getElementById("reqForm");
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const data = new FormData(form);
+
+    const res = await fetch("{% url 'repairs:request_otp' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+        body: data,
+        credentials: "same-origin",
     });
 
-    document.getElementById('verifyBtn').addEventListener('click', async () => {
-        const otp = document.getElementById('otp').value;
-        const formData = new FormData();
-        formData.append('temp_id', localStorage.getItem('temp_id'));
-        formData.append('otp', otp);
-        const res = await fetch('/repairs/verify-otp/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrftoken },
-            body: formData,
-            credentials: 'same-origin'
-        });
-        const json = await res.json();
-        if (json.success) {
-            alert("Job Created: " + json.job_id);
-            // Optional: Clear form and hide OTP div after successful verification
-            form.reset();
-            document.getElementById('otpDiv').style.display = 'none';
-        } else alert(json.error);
+    const json = await res.json();
+
+    if (json.success) {
+        alert("OTP sent successfully!");
+        localStorage.setItem("temp_id", json.temp_id);
+
+        form.style.display = "none";       // hide form
+        document.getElementById("otpDiv").style.display = "block"; // show OTP UI
+
+    } else {
+        alert(json.error);
+    }
+});
+
+
+// Handle Verify OTP
+document.getElementById("verifyBtn").addEventListener("click", async () => {
+    const otp = document.getElementById("otp").value;
+
+    const fd = new FormData();
+    fd.append("temp_id", localStorage.getItem("temp_id"));
+    fd.append("otp", otp);
+
+    const res = await fetch("{% url 'repairs:verify_otp' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+        body: fd,
+        credentials: "same-origin",
     });
-    </script>
+
+    const json = await res.json();
+
+    if (json.success) {
+        alert("Job Created Successfully!");
+
+        // Redirect to job detail
+        window.location.href = "/repairs/job/" + json.job_id + "/";
+
+    } else {
+        alert(json.error);
+    }
+});
+</script>
+
 </body>
 </html>

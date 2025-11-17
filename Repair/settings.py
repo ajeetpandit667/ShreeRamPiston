@@ -178,5 +178,8 @@ else:
     DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@shreeramrepairs.com')
 
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/repairs/'
+LOGOUT_URL = '/logout/'
+LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+

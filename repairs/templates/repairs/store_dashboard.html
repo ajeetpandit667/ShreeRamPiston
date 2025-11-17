@@ -5,33 +5,120 @@
     <title>Store Dashboard</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'repairs/theme.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 <!-- NAVBAR -->
-<nav style="display: flex; justify-content: space-between; align-items: center; padding: 0;">
-    <div style="padding: 1rem 1.5rem; font-size: 1.5rem; font-weight: 700;">Store Dashboard</div>
+<nav style="display:flex; justify-content:space-between; align-items:center; padding:0;">
+    <div style="padding:1rem 1.5rem; font-size:1.5rem; font-weight:700;">Store Dashboard</div>
 
-    <form method="POST" action="{% url 'logout' %}" style="padding-right: 1.5rem;">
+    <form method="POST" action="{% url 'logout' %}" style="padding-right:1.5rem;">
         {% csrf_token %}
         <button class="btn-danger">Logout</button>
     </form>
 </nav>
 
 <!-- Create Repair Request -->
-<div style="padding: 1.5rem;">
-    <a href="{% url 'repairs:home' %}%" 
-       class="btn-primary" style="font-size: 1.125rem;">
+<div style="padding:1.5rem;">
+    <a href="{% url 'repairs:home' %}"
+       class="btn-primary" style="font-size:1.125rem;">
         + Create New Repair Request
     </a>
 </div>
 
+<!-- Search / Filters -->
+<div style="padding:0 1.5rem 1.5rem 1.5rem;">
+    <form method="GET" class="mb-6" style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-end;">
+
+        <div style="min-width:160px;">
+            <label style="display:block; font-size:0.85rem; color:#6b7280;">Job ID</label>
+            <input type="text" name="job_id" value="{{ request.GET.job_id }}"
+                   style="padding:0.5rem 0.75rem; border-radius:8px; background:#111827; border:1px solid #374151; color:#fff; width:100%;">
+        </div>
+
+        <div style="min-width:160px;">
+            <label style="display:block; font-size:0.85rem; color:#6b7280;">Customer Phone</label>
+            <input type="text" name="phone" value="{{ request.GET.phone }}"
+                   style="padding:0.5rem 0.75rem; border-radius:8px; background:#111827; border:1px solid #374151; color:#fff; width:100%;">
+        </div>
+
+        <div style="min-width:160px;">
+            <label style="display:block; font-size:0.85rem; color:#6b7280;">Status</label>
+
+            <select name="status"
+                    style="padding:0.5rem 0.75rem; border-radius:8px; background:#111827; border:1px solid #374151; color:#fff; width:100%;">
+                <option value="">All</option>
+
+                <option value="open" {% if request.GET.status == 'open' %}selected{% endif %}>Open</option>
+                <option value="dispatched" {% if request.GET.status == 'dispatched' %}selected{% endif %}>Dispatched</option>
+                <option value="received" {% if request.GET.status == 'received' %}selected{% endif %}>Received</option>
+                <option value="repairing" {% if request.GET.status == 'repairing' %}selected{% endif %}>Repairing</option>
+                <option value="ready" {% if request.GET.status == 'ready' %}selected{% endif %}>Ready</option>
+                <option value="not_repairable" {% if request.GET.status == 'not_repairable' %}selected{% endif %}>Not Repairable</option>
+                <option value="dispatched_back" {% if request.GET.status == 'dispatched_back' %}selected{% endif %}>Dispatched Back</option>
+                <option value="closed" {% if request.GET.status == 'closed' %}selected{% endif %}>Closed</option>
+            </select>
+        </div>
+
+        <div style="align-self:flex-end;">
+            <button class="btn-primary" type="submit" style="padding:0.5rem 1rem;">Search</button>
+        </div>
+
+    </form>
+</div>
+
+<!-- Statistics Chart -->
+<div style="padding:0 1.5rem 1.5rem 1.5rem;">
+    <div style="background:#1f2937; padding:1rem; border-radius:8px; margin-bottom:1.5rem;">
+        <h2 style="margin-top:0; margin-bottom:1rem; font-size:1.125rem;">Jobs Created Per Week</h2>
+        <canvas id="jobsChart"></canvas>
+    </div>
+</div>
+
+<script>
+fetch("{% url 'repairs:job_stats' %}")
+.then(r => r.json())
+.then(data => {
+    new Chart(document.getElementById('jobsChart'), {
+        type: 'line',
+        data: {
+            labels: data.weeks,
+            datasets: [{
+                label: "Jobs per Week",
+                data: data.counts,
+                borderWidth: 3,
+                borderColor: '#0ea5e9',
+                backgroundColor: 'rgba(14,165,233,0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: '#fff' } }
+            },
+            scales: {
+                y: {
+                    ticks: { color: '#9ca3af' },
+                    grid: { color: '#374151' }
+                },
+                x: {
+                    ticks: { color: '#9ca3af' },
+                    grid: { color: '#374151' }
+                }
+            }
+        }
+    });
+});
+</script>
+
 <!-- Job List -->
-<div style="padding: 1.5rem;">
+<div style="padding:1.5rem;">
     <h2>Your Repair Jobs</h2>
 
-    <div style="overflow-x: auto;">
-        <table>
+    <div style="overflow-x:auto;">
+        <table style="background: rgba(14, 165, 233, 0.25);color: var(--white);backdrop-filter: blur(6px);">
             <thead>
                 <tr>
                     <th>Job ID</th>
@@ -50,37 +137,28 @@
                             {{ job.job_id }}
                         </a>
                     </td>
+
                     <td>{{ job.customer.phone }}</td>
-                    <td>{{ job.item }}</td>
+
+                    <td>{{ job.item_name }}</td>
 
                     <td>
-                        <span class="badge
-                            {% if job.status == 'open' %} badge-warning
-                            {% elif job.status == 'sent' %} badge-primary
-                            {% elif job.status == 'ready' %} badge-success
-                            {% elif job.status == 'closed' %} badge-secondary
-                            {% endif %}
-                        ">
-                            {{ job.status }}
+                        {# Render a single badge class based on status and close the if block #}
+                        <span class="badge{% if job.status == 'open' %} badge-warning{% elif job.status == 'dispatched' %} badge-primary{% elif job.status == 'received' %} badge-info{% elif job.status == 'repairing' %} badge-purple{% elif job.status == 'ready' %} badge-success{% elif job.status == 'not_repairable' %} badge-danger{% elif job.status == 'dispatched_back' %} badge-cyan{% elif job.status == 'closed' %} badge-secondary{% endif %}">
+                            {{ job.get_status_display|default:job.status }}
                         </span>
                     </td>
 
                     <td>
-                        {% if job.status == 'open' %}
-                        <a href="{% url 'repairs:send_to_warehouse' job.job_id %}"
-                           class="btn-secondary" style="font-size: 0.875rem;">
-                            Send to Warehouse
-                        </a>
-                        {% endif %}
+                        <a href="{% url 'repairs:job_detail' job.job_id %}" class="btn-secondary">View</a>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" style="text-align: center; padding: 1rem;">
-                        No repair jobs found.
-                    </td>
+                    <td colspan="5">No jobs found.</td>
                 </tr>
                 {% endfor %}
+
             </tbody>
         </table>
     </div>

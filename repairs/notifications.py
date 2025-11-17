@@ -1,5 +1,4 @@
 # repairs/notifications.py
-from twilio.rest import Client
 from django.conf import settings
 from django.core.mail import send_mail
 from .models import NotifyLog
@@ -26,6 +25,8 @@ def send_notification(to, text, channel='mock', payload=None):
 
     if channel == 'sms':
         try:
+            # Import Twilio client lazily to avoid import-time failure when twilio isn't installed
+            from twilio.rest import Client
             client = Client(settings.TWILIO_SID, settings.TWILIO_AUTH)
             client.messages.create(body=text, from_=settings.TWILIO_FROM, to=to)
             return True

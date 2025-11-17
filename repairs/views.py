@@ -1,116 +1,215 @@
 # repairs/views.py
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
-from .models import (
-    Store, Customer, RepairJob, PendingCreate, StatusHistory, 
-    OtpLog, NotifyLog, Courier, JobPhoto
-)
-from .decorators import store_only
+from django.db.models.functions import TruncWeek
+from django.db.models import Count
 from django.utils import timezone
-import random, string, uuid, datetime
 from django.views.decorators.csrf import csrf_protect
-from django.contrib.auth.decorators import login_required
-from .notifications import send_notification
-from django.core.mail import send_mail
-from django.conf import settings
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login as auth_login
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import StaffProfile, RepairJob
+from django.core.mail import send_mail
+from django.conf import settings
+import random, string, uuid, datetime
 
+from .models import (
+    Store, Customer, RepairJob, PendingCreate, StatusHistory,
+    OtpLog, NotifyLog, Courier, JobPhoto, StaffProfile
+)
+from .notifications import send_notification
 
-
+# -------------------------------------------------------
+# ROLE CHECKING HELPERS
+# -------------------------------------------------------
 
 def has_role(role):
+    """Decorator factory: ensures user has a specific role."""
     def check(user):
         try:
-            return user.is_authenticated and hasattr(user, 'staffprofile') and user.staffprofile.role == role
-        except StaffProfile.DoesNotExist:
+            return user.is_authenticated and user.staffprofile.role == role
+        except:
             return False
-    return user_passes_test(check)
+    return user_passes_test(check, login_url='/login/')
 
-store_required = has_role('store')
-warehouse_required = has_role('warehouse')
+store_required = has_role("store")
+warehouse_required = has_role("warehouse")
 
 
+# -------------------------------------------------------
+# COMMON HELPERS
+# -------------------------------------------------------
+
+def generate_otp_code(n=6):
+    return ''.join(random.choices(string.digits, k=n))
+
+
+# -------------------------------------------------------
+# DASHBOARD ROUTES
+# -------------------------------------------------------
+
+@login_required
+def dashboard(request):
+    user = request.user
+
+    # Admin goes to admin panel
+    if user.is_superuser:
+        return redirect('/admin/')
+
+    # Must have staff profile
+    try:
+        profile = user.staffprofile
+    except:
+        return HttpResponse("Your role is not assigned. Contact admin.")
+
+    # Role-based redirect
+    if profile.role == "store":
+        return redirect("repairs:store_dashboard")
+
+    if profile.role == "warehouse":
+        return redirect("repairs:warehouse_dashboard")
+
+    return HttpResponse("Invalid role. Contact admin.")
+
+
+# -------------------------------------------------------
+# STORE DASHBOARD
+# -------------------------------------------------------
 
 @login_required
 @store_required
 def store_dashboard(request):
-    # store-specific page
     profile = request.user.staffprofile
-    # only jobs for this store
-    jobs = RepairJob.objects.filter(store=profile.store).order_by('-created_at')
-    return render(request, 'repairs/store_dashboard.html', {'jobs': jobs})
+    jobs = RepairJob.objects.filter(store=profile.store)
+
+    # Filters
+    job_id = request.GET.get("job_id")
+    status = request.GET.get("status")
+    phone = request.GET.get("phone")
+
+    if job_id:
+        jobs = jobs.filter(job_id__icontains=job_id)
+
+    if status:
+        jobs = jobs.filter(status=status)
+
+    if phone:
+        jobs = jobs.filter(customer__phone__icontains=phone)
+
+    jobs = jobs.order_by("-created_at")
+    return render(request, "repairs/store_dashboard.html", {"jobs": jobs})
+
+
+# -------------------------------------------------------
+# WAREHOUSE DASHBOARD
+# -------------------------------------------------------
 
 @login_required
 @warehouse_required
 def warehouse_dashboard(request):
-    profile = request.user.staffprofile
-    # jobs that are dispatched/received for warehouse view
-    jobs = RepairJob.objects.filter(status__in=['dispatched','received']).order_by('-updated_at')
-    return render(request, 'repairs/warehouse_dashboard.html', {'jobs': jobs})
+
+    jobs = RepairJob.objects.filter(
+        status__in=["dispatched", "received", "repairing", "ready", "not_repairable", "dispatched_back"]
+    )
+
+    # Filters
+    job_id = request.GET.get("job_id")
+    status = request.GET.get("status")
+    phone = request.GET.get("phone")
+
+    if job_id:
+        jobs = jobs.filter(job_id__icontains=job_id)
+
+    if status:
+        jobs = jobs.filter(status=status)
+
+    if phone:
+        jobs = jobs.filter(customer__phone__icontains=phone)
+
+    jobs = jobs.order_by("-updated_at")
+
+    return render(request, "repairs/warehouse_dashboard.html", {"jobs": jobs})
 
 
-def generate_otp_code(n=6):
-    return ''.join(random.choices(string.digits, k=n))
+# -------------------------------------------------------
+# HOME + JOB LIST + JOB DETAIL
+# -------------------------------------------------------
 
 @login_required
 def home(request):
     stores = Store.objects.all()
     return render(request, 'repairs/home.html', {'stores': stores})
 
+
 def job_list(request):
-    """
-    Show recent jobs. Store staff see only jobs for their store.
-    Other users (or anonymous) see all recent jobs.
-    """
-    jobs = RepairJob.objects.order_by('-created_at')[:200]
+    # Build queryset first, apply filters, then slice
+    jobs = RepairJob.objects.order_by("-created_at")
 
-    # If the user is authenticated and a store staff member, filter by their store
-    if request.user.is_authenticated and hasattr(request.user, 'staffprofile') and request.user.staffprofile.role == 'store':
-        jobs = jobs.filter(store=request.user.staffprofile.store)
+    # Store staff only sees their own jobs
+    if request.user.is_authenticated and hasattr(request.user, "staffprofile"):
+        try:
+            if request.user.staffprofile.role == "store":
+                jobs = jobs.filter(store=request.user.staffprofile.store)
+        except Exception:
+            # If staffprofile access fails, fall back to no additional filter
+            pass
 
-    return render(request, 'repairs/job_list.html', {'jobs': jobs})
+    # Allow searching by job_id and phone from the job_list search form
+    job_id = request.GET.get("job_id")
+    phone = request.GET.get("phone")
+    if job_id:
+        jobs = jobs.filter(job_id__icontains=job_id)
+    if phone:
+        jobs = jobs.filter(customer__phone__icontains=phone)
+
+    # Limit to latest 200 after filtering
+    jobs = jobs[:200]
+
+    return render(request, "repairs/job_list.html", {"jobs": jobs})
+
+
 def job_detail(request, job_id):
     job = get_object_or_404(RepairJob, job_id=job_id)
-    return render(request, 'repairs/job_detail.html', {'job': job})
+    return render(request, "repairs/job_detail.html", {"job": job})
+
+
+# -------------------------------------------------------
+# OTP WORKFLOW
+# -------------------------------------------------------
 
 @csrf_protect
 def request_otp(request):
-    # Expects POST form data: phone, name, store, item, reason, days
-    if request.method != 'POST':
+    if request.method != "POST":
         return HttpResponseBadRequest("Only POST")
 
-    phone = request.POST.get('phone')
-    name = request.POST.get('name', '')
-    store_id = request.POST.get('store')
-    item = request.POST.get('item', '')
-    reason = request.POST.get('reason', '')
-    repair_days = int(request.POST.get('days', 2))
+    phone = request.POST.get("phone")
+    name = request.POST.get("name", "")
+    store_id = request.POST.get("store")
+    item = request.POST.get("item", "")
+    reason = request.POST.get("reason", "")
+    repair_days = int(request.POST.get("days", 2))
+    email = request.POST.get("email", "").strip()
 
     if not phone or not store_id:
-        return JsonResponse({'success': False, 'error': 'phone and store required'})
+        return JsonResponse({"success": False, "error": "phone and store required"})
 
     try:
         store = Store.objects.get(id=store_id)
     except Store.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Store not found'})
+        return JsonResponse({"success": False, "error": "Store not found"})
 
     otp = generate_otp_code()
     expiry = timezone.now() + datetime.timedelta(minutes=15)
     temp_id = str(uuid.uuid4())
-    email = request.POST.get('email', '').strip()
 
     payload = {
-        'phone': phone,
-        'name': name,
-        'email': email,
-        'store_id': store.id,
-        'item': item,
-        'reason': reason,
-        'repair_days': repair_days
+        "phone": phone,
+        "name": name,
+        "email": email,
+        "store_id": store.id,
+        "item": item,
+        "reason": reason,
+        "repair_days": repair_days
     }
 
     PendingCreate.objects.create(
@@ -120,365 +219,220 @@ def request_otp(request):
         otp_expiry=expiry
     )
 
-    # log and mock send
-    OtpLog.objects.create(phone=phone, event='request_created', payload={'temp_id': temp_id, 'otp': otp, 'email': email})
-    NotifyLog.objects.create(channel='mock', to=phone, type='otp_sent', payload={'otp': otp})
-    # send OTP to email if provided
+    # Log OTP
+    OtpLog.objects.create(
+        phone=phone,
+        event="request_created",
+        payload={"temp_id": temp_id, "otp": otp, "email": email}
+    )
+
+    # Send email OTP
     if email:
-        NotifyLog.objects.create(channel='email', to=email, type='otp_sent', payload={'otp': otp})
-        # send actual email using Django's send_mail (falls back to console backend in dev)
         try:
-            subject = "Your Repair Request OTP"
-            message = f"Dear {name},\n\nYour OTP for repair request verification is: {otp}\n\nThis OTP will expire in 15 minutes.\n\nThank you!"
-            from_email = settings.DEFAULT_FROM_EMAIL
-            recipient_list = [email]
-            send_mail(subject, message, from_email, recipient_list, fail_silently=False)
-        except Exception:
-            # fallback to notify helper if send_mail fails
-            try:
-                send_notification(email, f'Your OTP is: {otp}', channel='email', payload={'temp_id': temp_id})
-            except Exception:
-                pass
+            send_mail(
+                "Your Repair Request OTP",
+                f"Dear {name},\nYour verification OTP is: {otp}\n(Valid for 15 minutes)",
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False
+            )
+        except:
+            pass
 
-    if getattr(settings, 'DEBUG', False):
-        print(f"[MOCK SMS] OTP for {phone}: {otp}")  # developer convenience
-        if email:
-            print(f"[MOCK EMAIL] OTP for {email}: {otp}")
+    if settings.DEBUG:
+        print(f"OTP for {phone}: {otp}")
 
-    return JsonResponse({'success': True, 'temp_id': temp_id})
+    return JsonResponse({"success": True, "temp_id": temp_id})
+
 
 @csrf_protect
 def verify_otp(request):
-    # expects POST: temp_id, otp
-    if request.method != 'POST':
+    if request.method != "POST":
         return HttpResponseBadRequest("Only POST")
 
-    temp_id = request.POST.get('temp_id')
-    otp = request.POST.get('otp')
+    temp_id = request.POST.get("temp_id")
+    otp = request.POST.get("otp")
 
     if not temp_id or not otp:
-        return JsonResponse({'success': False, 'error': 'temp_id and otp required'})
+        return JsonResponse({"success": False, "error": "Missing fields"})
 
     try:
         pending = PendingCreate.objects.get(temp_id=temp_id)
-    except PendingCreate.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Invalid request'})
+    except:
+        return JsonResponse({"success": False, "error": "Invalid request"})
 
     if pending.otp != otp:
         pending.attempts += 1
         pending.save()
-        return JsonResponse({'success': False, 'error': 'Invalid OTP'})
+        return JsonResponse({"success": False, "error": "Invalid OTP"})
 
     if pending.otp_expiry < timezone.now():
         pending.delete()
-        return JsonResponse({'success': False, 'error': 'OTP expired'})
+        return JsonResponse({"success": False, "error": "OTP expired"})
 
     payload = pending.payload
-    store = Store.objects.get(id=payload['store_id'])
+    store = Store.objects.get(id=payload["store_id"])
+
     customer, _ = Customer.objects.get_or_create(
-        phone=payload['phone'],
-        defaults={'name': payload.get('name', ''), 'email': payload.get('email', '')}
+        phone=payload["phone"],
+        defaults={"name": payload["name"], "email": payload["email"]}
     )
 
     job = RepairJob.objects.create(
         store=store,
         customer=customer,
-        item_name=payload.get('item', ''),
-        item_details='',
-        damage_reason=payload.get('reason', ''),
-        repair_days=payload.get('repair_days', 2),
+        item_name=payload["item"],
+        damage_reason=payload["reason"],
+        repair_days=payload["repair_days"],
     )
 
-    StatusHistory.objects.create(job=job, from_status='created', to_status='open', note='Created via OTP flow')
-    OtpLog.objects.create(phone=customer.phone, event='verified_create', payload={'job_id': job.job_id})
-
-    # Notify via phone and email if available
-    NotifyLog.objects.create(channel='mock', to=customer.phone, type='job_created', payload={'job_id': job.job_id, 'delivery_date': str(job.delivery_date)})
-    try:
-        send_notification(customer.phone, f"Your job {job.job_id} has been created.", channel='sms', payload={'job_id': job.job_id})
-    except Exception:
-        pass
-    if getattr(customer, 'email', ''):
-        NotifyLog.objects.create(channel='email', to=customer.email, type='job_created', payload={'job_id': job.job_id, 'delivery_date': str(job.delivery_date)})
-        try:
-            send_notification(customer.email, f"Your job {job.job_id} has been created.", channel='email', payload={'job_id': job.job_id})
-        except Exception:
-            pass
-    if getattr(settings, 'DEBUG', False):
-        print(f"[MOCK NOTIFY] Job created {job.job_id} for {customer.phone} / {getattr(customer, 'email', '')}")
+    StatusHistory.objects.create(job=job, from_status="created", to_status="open")
 
     pending.delete()
-    return JsonResponse({'success': True, 'job_id': job.job_id})
+    return JsonResponse({"success": True, "job_id": job.job_id})
 
-# Following endpoints implement transitions from flowchart
 
+# -------------------------------------------------------
+# PICKUP OTP + PHOTO UPLOAD
+# -------------------------------------------------------
+
+
+@login_required
 @csrf_protect
-def send_to_warehouse(request, job_id):
-    """
-    POST: optional courier_id, awb
-    Sets status -> dispatched
-    """
+def generate_pickup_otp(request, job_id):
+    # Generate an OTP for pickup and notify customer
     job = get_object_or_404(RepairJob, job_id=job_id)
-    courier_id = request.POST.get('courier_id')
-    awb = request.POST.get('awb', '')
-    if courier_id:
-        try:
-            courier = Courier.objects.get(id=courier_id)
-            job.courier = courier
-        except Courier.DoesNotExist:
-            pass
-    if awb:
-        job.awb = awb
-    job.status = 'dispatched'
-    job.save()
-    StatusHistory.objects.create(job=job, from_status='open', to_status='dispatched', note='Sent to warehouse')
-    NotifyLog.objects.create(channel='mock', to=job.store.name, type='dispatched', payload={'job_id': job.job_id})
-    return JsonResponse({'success': True, 'job_id': job.job_id, 'status': job.status})
-
-@csrf_protect
-def mark_received(request, job_id):
-    job = get_object_or_404(RepairJob, job_id=job_id)
-    job.status = 'received'
-    job.save()
-    StatusHistory.objects.create(job=job, from_status='dispatched', to_status='received', note='Received at warehouse')
-    NotifyLog.objects.create(channel='mock', to=job.store.name, type='received', payload={'job_id': job.job_id})
-    return JsonResponse({'success': True, 'job_id': job.job_id, 'status': job.status})
-
-@csrf_protect
-def mark_ready(request, job_id):
-    # used when cobbler/warehouse marks item ready for pickup
-    job = get_object_or_404(RepairJob, job_id=job_id)
-    job.status = 'ready'
+    otp = generate_otp_code()
+    expiry = timezone.now() + datetime.timedelta(minutes=30)
+    job.otp = otp
+    job.otp_expiry = expiry
     job.save()
 
-    # Record status transition
-    StatusHistory.objects.create(job=job, from_status='received', to_status='ready', note='Ready for pickup')
-
-    # Log notify and try to send notifications (best-effort)
-    NotifyLog.objects.create(channel='mock', to=job.customer.phone, type='ready', payload={'job_id': job.job_id})
+    # send a notification (mock during development)
     try:
-        send_notification(job.customer.phone, f"Your Job {job.job_id} is ready for pickup.", channel='sms', payload={'job_id': job.job_id})
+        send_notification(job.customer.phone, f"Pickup OTP: {otp}", channel='mock')
     except Exception:
         pass
 
-    # also notify by email if the customer has an email
-    if getattr(job.customer, 'email', ''):
-        NotifyLog.objects.create(channel='email', to=job.customer.email, type='ready', payload={'job_id': job.job_id})
-        try:
-            send_notification(job.customer.email, f"Your Job {job.job_id} is ready for pickup.", channel='email', payload={'job_id': job.job_id})
-        except Exception:
-            pass
+    if settings.DEBUG:
+        return JsonResponse({"success": True, "otp": otp})
+    return JsonResponse({"success": True})
 
-    return JsonResponse({'success': True, 'job_id': job.job_id, 'status': job.status})
-
-@csrf_protect
-def generate_pickup_otp(request, job_id):
-    job = get_object_or_404(RepairJob, job_id=job_id)
-    otp = generate_otp_code()
-    job.otp = otp
-    job.otp_expiry = timezone.now() + datetime.timedelta(minutes=30)
-    job.save()
-    OtpLog.objects.create(phone=job.customer.phone, event='pickup_otp_generated', payload={'job_id': job.job_id, 'otp': otp})
-    NotifyLog.objects.create(channel='mock', to=job.customer.phone, type='pickup_otp', payload={'otp': otp})
-    if getattr(settings, 'DEBUG', False):
-        print(f"[MOCK] Pickup OTP for {job.customer.phone}: {otp}")
-    return JsonResponse({'success': True, 'job_id': job.job_id})
-
-@csrf_protect
-def upload_photo(request, job_id):
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'Only POST method allowed'})
-    
-    job = get_object_or_404(RepairJob, job_id=job_id)
-    
-    if 'photo' not in request.FILES:
-        return JsonResponse({'success': False, 'error': 'No photo uploaded'})
-    
-    photo = request.FILES['photo']
-    JobPhoto.objects.create(job=job, file=photo)
-    
-    return JsonResponse({'success': True})
 
 @csrf_protect
 def verify_pickup(request, job_id):
+    if request.method != "POST":
+        return HttpResponseBadRequest("Only POST")
+
+    otp = request.POST.get("otp")
     job = get_object_or_404(RepairJob, job_id=job_id)
-    otp = request.POST.get('otp')
-    if not otp:
-        return JsonResponse({'success': False, 'error': 'OTP required'})
-    if job.otp != otp:
-        return JsonResponse({'success': False, 'error': 'Invalid OTP'})
-    if job.otp_expiry and job.otp_expiry < timezone.now():
-        return JsonResponse({'success': False, 'error': 'OTP expired'})
-    job.status = 'closed'
+
+    if not job.otp or otp != job.otp or (job.otp_expiry and job.otp_expiry < timezone.now()):
+        return JsonResponse({"success": False, "error": "Invalid or expired OTP"})
+
+    job.status = "closed"
     job.save()
-    StatusHistory.objects.create(job=job, from_status='ready', to_status='closed', note='Customer pickup verified')
-    OtpLog.objects.create(phone=job.customer.phone, event='pickup_verified', payload={'job_id': job.job_id})
-    NotifyLog.objects.create(channel='mock', to=job.customer.phone, type='job_closed', payload={'job_id': job.job_id})
-    return JsonResponse({'success': True, 'job_id': job.job_id})
-
-
-@csrf_protect
-def register(request):
-    """Handle user registration from the login page register form.
-    Creates a Django user (username uses email if provided, otherwise mobile),
-    creates a Customer record, logs the user in, and redirects to LOGIN_REDIRECT_URL.
-    """
-    if request.method != 'POST':
-        return redirect('login')
-
-    name = request.POST.get('name', '').strip()
-    email = request.POST.get('email', '').strip()
-    password = request.POST.get('password')
-    confirm = request.POST.get('confirm_password')
-    mobile = request.POST.get('mobile', '').strip()
-
-    # basic validation
-    if not (name and email and password and confirm and mobile):
-        # simple fallback: redirect back to login with a message could be improved
-        return redirect('login')
-    if password != confirm:
-        return redirect('login')
-
-    username = email or mobile
-
-    # ensure unique username
-    original_username = username
-    suffix = 1
-    while User.objects.filter(username=username).exists():
-        username = f"{original_username}_{suffix}"
-        suffix += 1
-
-    created_user = User.objects.create_user(username=username, email=email, password=password, first_name=name)
-
-    # create or update Customer
     try:
-        customer, created = Customer.objects.get_or_create(phone=mobile, defaults={'name': name, 'email': email})
-        if not created:
-            customer.name = name
-            customer.email = email
-            customer.save()
+        StatusHistory.objects.create(job=job, from_status="ready", to_status="closed", by=request.user if request.user.is_authenticated else None)
     except Exception:
-        # ignore customer creation errors for now
         pass
 
-    # authenticate and login
-    user = authenticate(username=username, password=password)
-    if user is not None:
-        auth_login(request, user)
+    return JsonResponse({"success": True})
 
-    # mark user as registered so they are allowed to login
-    try:
-        from .models import LoginProfile
-        lp, created = LoginProfile.objects.get_or_create(user=created_user)
-        lp.is_registered = True
-        lp.save()
-    except Exception:
-        # non-fatal if profile creation fails
-        pass
-
-    # redirect to configured login redirect (repairs home)
-    redirect_to = getattr(settings, 'LOGIN_REDIRECT_URL', '/')
-    return redirect(redirect_to)
-
-
-@csrf_protect
-def custom_login(request):
-    """Custom login view that distinguishes between "user not registered" and "invalid password".
-
-    WARNING: exposing whether a username exists is less secure; doing so because the user asked
-    for explicit messages. Consider changing to a generic message in production.
-    """
-    # Use a single generic error message to avoid username enumeration
-    generic_error = 'Invalid username or password.'
-    error = None
-    form = None
-
-    # Determine 'next' (where to redirect after successful login)
-    next_param = request.POST.get('next') or request.GET.get('next')
-
-    if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
-
-        # If the form validates credentials, check loginprofile and log user in.
-        if form.is_valid():
-            user_obj = form.get_user()
-            try:
-                lp = user_obj.loginprofile
-                if not lp.is_registered:
-                    # mark as invalid by adding a non-field error
-                    form.add_error(None, generic_error)
-                else:
-                        auth_login(request, user_obj)
-                        # Prefer the 'next' parameter if it's safe
-                        try:
-                            from django.utils.http import url_has_allowed_host_and_scheme
-                            allowed = {request.get_host()}
-                            if next_param and url_has_allowed_host_and_scheme(next_param, allowed_hosts=allowed):
-                                return redirect(next_param)
-                        except Exception:
-                            pass
-                        redirect_to = getattr(settings, 'LOGIN_REDIRECT_URL', '/')
-                        return redirect(redirect_to)
-            except Exception:
-                # missing profile -> treat as not registered
-                form.add_error(None, generic_error)
-        else:
-            # keep generic message; AuthenticationForm already adds non_field_errors
-            error = generic_error
-    else:
-        form = AuthenticationForm()
-
-    # GET or failed POST
-    return render(request, 'repairs/login.html', {'error': error, 'form': form})
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect
-from .models import StaffProfile
 
 @login_required
-def dashboard(request):
-    user = request.user
+@csrf_protect
+def upload_photo(request, job_id):
+    if request.method != "POST":
+        return HttpResponseBadRequest("Only POST")
 
-    # if admin user -> send to admin panel
-    if user.is_superuser or user.is_staff:
-        return redirect('/admin/')
+    job = get_object_or_404(RepairJob, job_id=job_id)
+    f = request.FILES.get('file')
+    if not f:
+        return JsonResponse({"success": False, "error": "file missing"})
 
-    try:
-        profile = user.staffprofile
-    except StaffProfile.DoesNotExist:
-        return HttpResponse("Role not assigned. Contact admin.")
-
-    # Role-based redirect
-    if profile.role == 'store':
-        return redirect('repairs:store_dashboard')
-
-    if profile.role == 'warehouse':
-        return redirect('repairs:warehouse_dashboard')
-
-    return HttpResponse("Invalid role. Contact admin.")
+    photo = JobPhoto.objects.create(job=job, file=f)
+    return JsonResponse({"success": True, "photo_id": photo.id})
 
 
-from django.contrib.auth.decorators import user_passes_test
-
-def role_required(role):
-    def check(user):
-        try:
-            return user.staffprofile.role == role
-        except:
-            return False
-    return user_passes_test(check, login_url='/login/')
-
+# -------------------------------------------------------
+# STATUS TRANSITIONS
+# -------------------------------------------------------
 
 @login_required
 @store_required
-def store_dashboard(request):
-    profile = request.user.staffprofile
-    jobs = RepairJob.objects.filter(store=profile.store).order_by('-created_at')
-    return render(request, 'repairs/store_dashboard.html', {'jobs': jobs})
+@csrf_protect
+def send_to_warehouse(request, job_id):
+    job = get_object_or_404(RepairJob, job_id=job_id)
+    job.status = "dispatched"
+    job.save()
+    return JsonResponse({"success": True})
 
 
 @login_required
 @warehouse_required
-def warehouse_dashboard(request):
-    jobs = RepairJob.objects.filter(status__in=['dispatched', 'received', 'repairing']).order_by('-updated_at')
-    return render(request, 'repairs/warehouse_dashboard.html', {'jobs': jobs})
+@csrf_protect
+def mark_received(request, job_id):
+    job = get_object_or_404(RepairJob, job_id=job_id)
+    job.status = "received"
+    job.save()
+    return redirect("repairs:warehouse_dashboard")
+
+
+@login_required
+@warehouse_required
+@csrf_protect
+def mark_repairing(request, job_id):
+    job = get_object_or_404(RepairJob, job_id=job_id)
+    job.status = "repairing"
+    job.save()
+    return redirect("repairs:warehouse_dashboard")
+
+
+@login_required
+@warehouse_required
+@csrf_protect
+def mark_ready(request, job_id):
+    job = get_object_or_404(RepairJob, job_id=job_id)
+    job.status = "ready"
+    job.save()
+    return redirect("repairs:warehouse_dashboard")
+
+
+@login_required
+@warehouse_required
+@csrf_protect
+def mark_not_repairable(request, job_id):
+    job = get_object_or_404(RepairJob, job_id=job_id)
+    job.status = "not_repairable"
+    job.save()
+    return redirect("repairs:warehouse_dashboard")
+
+
+@login_required
+@warehouse_required
+@csrf_protect
+def dispatch_back_to_store(request, job_id):
+    job = get_object_or_404(RepairJob, job_id=job_id)
+    job.status = "dispatched_back"
+    job.save()
+    return redirect("repairs:warehouse_dashboard")
+
+
+# -------------------------------------------------------
+# CHART DATA
+# -------------------------------------------------------
+
+@login_required
+def job_stats(request):
+    data = (
+        RepairJob.objects.annotate(week=TruncWeek("created_at"))
+        .values("week")
+        .annotate(count=Count("id"))
+        .order_by("week")
+    )
+
+    return JsonResponse({
+        "weeks": [d["week"].strftime("%d %b") for d in data],
+        "counts": [d["count"] for d in data]
+    })

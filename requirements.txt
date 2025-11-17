@@ -1,2 +1,4 @@
 django
 python-dotenv
+django-crontab
+twilio
