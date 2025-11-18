@@ -61,7 +61,12 @@
             });
         </script>
 
-        <!-- Request Form -->
+        <div style="text-align:center; margin-bottom:1rem;">
+            <button id="showFormBtn" class="btn-primary" style="max-width:300px; width:100%;">Create New Repair Request</button>
+        </div>
+
+        <!-- Request Form (hidden until user clicks the Create button) -->
+        <div id="formContainer" style="display:none;">
         <form id="reqForm" style="display:grid; gap:1rem; max-width:450px; margin:auto;">
             {% csrf_token %}
 
@@ -103,6 +108,9 @@
             <button type="submit" class="btn-primary" style="width:100%;">Request OTP</button>
         </form>
 
+        </form>
+        </div>
+
         <!-- OTP UI -->
         <div id="otpDiv" style="display:none; margin-top:2rem; max-width:450px; margin:auto;">
             <div class="form-group">
@@ -139,8 +147,43 @@ const csrftoken = getCookie("csrftoken");
 
 
 // Handle Request OTP
+// Show form when button clicked
+document.getElementById('showFormBtn')?.addEventListener('click', function(e){
+    e.preventDefault();
+    document.getElementById('formContainer').style.display = 'block';
+    // Scroll into view smoothly
+    document.getElementById('formContainer').scrollIntoView({behavior: 'smooth', block: 'center'});
+});
+
+// Auto-open form when server requested (create_request view) or query param used
+{% if show_form %}
+document.addEventListener('DOMContentLoaded', function(){
+    document.getElementById('formContainer').style.display = 'block';
+    // preselect store if provided
+    {% if preselect_store %}
+    try{ const sel = document.querySelector('#formContainer select[name=store]'); if(sel){ sel.value = '{{ preselect_store }}'; }}catch(e){}
+    {% endif %}
+    // focus first input
+    const first = document.querySelector('#formContainer input, #formContainer textarea'); if(first) first.focus();
+});
+{% else %}
+// also support query param show_form=1 (GET)
+document.addEventListener('DOMContentLoaded', function(){
+    try{
+        const params = new URLSearchParams(window.location.search);
+        if(params.get('show_form') === '1'){
+            document.getElementById('formContainer').style.display = 'block';
+            const store = params.get('store');
+            if(store){ const sel = document.querySelector('#formContainer select[name=store]'); if(sel) sel.value = store; }
+            const first = document.querySelector('#formContainer input, #formContainer textarea'); if(first) first.focus();
+        }
+    }catch(e){}
+});
+{% endif %}
+
 const form = document.getElementById("reqForm");
-form.addEventListener("submit", async (e) => {
+if(form){
+    form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const data = new FormData(form);
@@ -155,7 +198,11 @@ form.addEventListener("submit", async (e) => {
     const json = await res.json();
 
     if (json.success) {
-        alert("OTP sent successfully!");
+        if (json.otp) {
+            alert('OTP: ' + json.otp + '\n(Also printed on server console when running in dev)');
+        } else {
+            alert("OTP sent successfully!");
+        }
         localStorage.setItem("temp_id", json.temp_id);
 
         form.style.display = "none";       // hide form
@@ -164,7 +211,8 @@ form.addEventListener("submit", async (e) => {
     } else {
         alert(json.error);
     }
-});
+    });
+}
 
 
 // Handle Verify OTP

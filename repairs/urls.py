@@ -7,9 +7,15 @@ app_name = "repairs"
 urlpatterns = [
 
     # -------------------------
+    # -------------------------
     # HOME + BASIC PAGES
     # -------------------------
-    path("", views.home, name="home"),
+    # Public landing at site root
+    path("", views.landing, name="landing"),
+    # Customer-facing home (after login or direct access)
+    path("home/", views.home, name="home"),
+    # dedicated create request route (forces the create form to show)
+    path("create/", views.create_request, name="create_request"),
     path("jobs/", views.job_list, name="job_list"),
     path("jobs/<str:job_id>/", views.job_detail, name="job_detail"),
 

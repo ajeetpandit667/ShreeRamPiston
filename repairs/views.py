@@ -146,6 +146,8 @@ def dashboard(request):
 def store_dashboard(request):
     profile = request.user.staffprofile
     jobs = RepairJob.objects.filter(store=profile.store)
+    # provide stores for create form (site-wide list)
+    stores = Store.objects.all()
 
     # Filters
     job_id = request.GET.get("job_id")
@@ -162,7 +164,7 @@ def store_dashboard(request):
         jobs = jobs.filter(customer__phone__icontains=phone)
 
     jobs = jobs.order_by("-created_at")
-    return render(request, "repairs/store_dashboard.html", {"jobs": jobs})
+    return render(request, "repairs/store_dashboard.html", {"jobs": jobs, "stores": stores})
 
 
 # -------------------------------------------------------
@@ -192,18 +194,56 @@ def warehouse_dashboard(request):
         jobs = jobs.filter(customer__phone__icontains=phone)
 
     jobs = jobs.order_by("-updated_at")
+    stores = Store.objects.all()
 
-    return render(request, "repairs/warehouse_dashboard.html", {"jobs": jobs})
+    return render(request, "repairs/warehouse_dashboard.html", {"jobs": jobs, "stores": stores})
 
 
 # -------------------------------------------------------
 # HOME + JOB LIST + JOB DETAIL
 # -------------------------------------------------------
 
-@login_required
+def landing(request):
+    """Public landing page with role cards (customer/store/warehouse/admin)."""
+    return render(request, 'repairs/landing.html')
+
+
 def home(request):
+    """Customer-facing home page; redirects staff users to their dashboards.
+
+    - If the user is not authenticated, redirect to the public landing page.
+    - If the user is staff, redirect to the appropriate dashboard.
+    - Otherwise render the customer `home.html` page.
+    """
+    if not request.user.is_authenticated:
+        return redirect('repairs:landing')
+
+    try:
+        profile = request.user.staffprofile
+        if profile.role == 'store':
+            return redirect('repairs:store_dashboard')
+        if profile.role == 'warehouse':
+            return redirect('repairs:warehouse_dashboard')
+    except Exception:
+        # not staff or profile missing -> fall through to customer home
+        pass
+
     stores = Store.objects.all()
     return render(request, 'repairs/home.html', {'stores': stores})
+
+
+def create_request(request):
+    """Render the same customer-facing home form but force-show the create form.
+
+    Accepts optional `store` GET param to pre-select a store.
+    """
+    stores = Store.objects.all()
+    preselect = request.GET.get('store')
+    return render(request, 'repairs/home.html', {
+        'stores': stores,
+        'show_form': True,
+        'preselect_store': preselect,
+    })
 
 
 def job_list(request):
@@ -248,11 +288,15 @@ def request_otp(request):
         return HttpResponseBadRequest("Only POST")
 
     phone = request.POST.get("phone")
-    name = request.POST.get("name", "")
+    # accept multiple possible form field names (legacy templates)
+    name = request.POST.get("name", "") or request.POST.get("customer_name", "")
     store_id = request.POST.get("store")
-    item = request.POST.get("item", "")
-    reason = request.POST.get("reason", "")
-    repair_days = int(request.POST.get("days", 2))
+    item = request.POST.get("item", "") or request.POST.get("item_name", "")
+    reason = request.POST.get("reason", "") or request.POST.get("damage_reason", "")
+    try:
+        repair_days = int(request.POST.get("days") or request.POST.get("repair_days") or 2)
+    except ValueError:
+        repair_days = 2
     email = request.POST.get("email", "").strip()
 
     if not phone or not store_id:
@@ -304,8 +348,37 @@ def request_otp(request):
         except:
             pass
 
-    if settings.DEBUG:
-        print(f"OTP for {phone}: {otp}")
+    # Send SMS (or mock) notification with OTP
+    try:
+        # prefer real SMS if Twilio configured
+        channel = 'sms' if getattr(settings, 'TWILIO_SID', None) and getattr(settings, 'TWILIO_AUTH', None) and getattr(settings, 'TWILIO_FROM', None) else 'mock'
+        send_notification(phone, f"Your verification OTP is: {otp}", channel=channel, payload={"temp_id": temp_id})
+    except Exception:
+        # swallow notification errors to avoid failing the request
+        pass
+
+    # Print OTP to server console when running in development.
+    # Control with settings.DEV_PRINT_OTPS (default True) so production can disable it.
+    try:
+        dev_print = getattr(settings, 'DEV_PRINT_OTPS', True)
+    except Exception:
+        dev_print = True
+
+    if dev_print:
+        try:
+            print(f"[OTP] Request OTP for {phone}: {otp}")
+        except Exception:
+            pass
+
+    # Return OTP in JSON to the client when in DEBUG or when explicitly allowed
+    # via settings.DEV_RETURN_OTP (default True in dev).
+    try:
+        dev_return = getattr(settings, 'DEV_RETURN_OTP', True)
+    except Exception:
+        dev_return = True
+
+    if settings.DEBUG or dev_return:
+        return JsonResponse({"success": True, "temp_id": temp_id, "otp": otp})
 
     return JsonResponse({"success": True, "temp_id": temp_id})
 
@@ -379,8 +452,26 @@ def generate_pickup_otp(request, job_id):
     except Exception:
         pass
 
-    if settings.DEBUG:
+    # Print to server console in development when allowed.
+    try:
+        dev_print = getattr(settings, 'DEV_PRINT_OTPS', True)
+    except Exception:
+        dev_print = True
+
+    if dev_print:
+        try:
+            print(f"[OTP] Pickup OTP for job {job.job_id}: {otp}")
+        except Exception:
+            pass
+
+    try:
+        dev_return = getattr(settings, 'DEV_RETURN_OTP', True)
+    except Exception:
+        dev_return = True
+
+    if settings.DEBUG or dev_return:
         return JsonResponse({"success": True, "otp": otp})
+
     return JsonResponse({"success": True})
 
 

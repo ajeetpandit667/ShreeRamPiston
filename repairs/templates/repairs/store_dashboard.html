@@ -21,11 +21,54 @@
 
 <!-- Create Repair Request -->
 <div style="padding:1.5rem;">
-    <a href="{% url 'repairs:home' %}"
-       class="btn-primary" style="font-size:1.125rem;">
-        + Create New Repair Request
-    </a>
+    <a href="{% url 'repairs:create_request' %}?show_form=1&store={{ request.user.staffprofile.store.id }}" class="btn-primary" style="font-size:1.125rem; max-width:320px; display:inline-block; text-decoration:none; text-align:center;">+ Create New Repair Request</a>
 </div>
+
+<script>
+// Show form button
+document.getElementById('showFormBtn')?.addEventListener('click', function(e){
+    e.preventDefault();
+    document.getElementById('formContainer').style.display = 'block';
+    document.getElementById('formContainer').scrollIntoView({behavior:'smooth', block:'center'});
+});
+
+// CSRF helper
+function getCookie(name){
+    let cookieValue=null;
+    if(document.cookie !== ''){
+        const cookies=document.cookie.split(';');
+        for(let c of cookies){ c=c.trim(); if(c.startsWith(name+'=')){ cookieValue=decodeURIComponent(c.slice(name.length+1)); }}
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+const form = document.getElementById('reqForm');
+if(form){
+    form.addEventListener('submit', async function(e){
+        e.preventDefault();
+        const data = new FormData(form);
+        const res = await fetch("{% url 'repairs:request_otp' %}", {
+            method: 'POST', headers: {'X-CSRFToken': csrftoken}, body: data, credentials: 'same-origin'
+        });
+        const json = await res.json();
+        if(json.success){
+            alert('OTP sent successfully');
+            localStorage.setItem('temp_id', json.temp_id);
+            form.style.display='none'; document.getElementById('otpDiv').style.display='block';
+        } else { alert(json.error); }
+    });
+}
+
+document.getElementById('verifyBtn')?.addEventListener('click', async function(){
+    const otp = document.getElementById('otp').value;
+    const fd = new FormData(); fd.append('temp_id', localStorage.getItem('temp_id')); fd.append('otp', otp);
+    const res = await fetch("{% url 'repairs:verify_otp' %}", {method:'POST', headers:{'X-CSRFToken': csrftoken}, body: fd, credentials:'same-origin'});
+    const json = await res.json();
+    if(json.success){ alert('Job created'); window.location.href = "{% url 'repairs:job_detail' 'JOB-PLACEHOLDER' %}".replace('JOB-PLACEHOLDER', json.job_id); }
+    else alert(json.error);
+});
+</script>
 
 <!-- Search / Filters -->
 <div style="padding:0 1.5rem 1.5rem 1.5rem;">

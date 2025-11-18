@@ -15,12 +15,16 @@
 <nav style="display:flex; justify-content:space-between; align-items:center; padding:0;">
     <div style="padding:1rem 1.5rem; font-size:1.5rem; font-weight:700;">Warehouse Dashboard</div>
 
-    <a href="{% url 'logout' %}" 
-       class="btn-danger"
-       style="margin-right:1.5rem; padding:0.5rem 1rem; text-decoration:none; color:white;">
-        Logout
-    </a>
+    <form method="POST" action="{% url 'logout' %}" style="margin-right:1.5rem;">
+        {% csrf_token %}
+        <button class="btn-danger" style="padding:0.5rem 1rem;">Logout</button>
+    </form>
 </nav>
+
+<!-- Create Repair Request -->
+<div style="padding:1.5rem;">
+    <a href="{% url 'repairs:create_request' %}?show_form=1" class="btn-primary" style="font-size:1.125rem; max-width:320px; display:inline-block; text-decoration:none; text-align:center;">+ Create New Repair Request</a>
+</div>
 
 <!-- Search / Filters -->
 <div style="padding:0 1.5rem 1.5rem 1.5rem;">

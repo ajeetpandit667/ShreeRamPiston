@@ -135,6 +135,8 @@
                 {% csrf_token %}
                 <button class="btn-primary">Dispatch Back to Store</button>
             </form>
+            <!-- Generate pickup OTP (for customer pickup) -->
+            <button id="generatePickupOtpBtn" class="btn-secondary" style="max-width:260px;">Generate Pickup OTP</button>
 
             {% elif job.status == 'dispatched_back' %}
             <p style="color: #9ca3af;">Item is sent back to store.</p>
@@ -211,6 +213,51 @@ document.getElementById('uploadForm')?.addEventListener('submit', async (e) => {
         alert(json.error || "Upload failed");
     }
 });
+</script>
+
+<script>
+// Generate Pickup OTP handler
+const genBtn = document.getElementById('generatePickupOtpBtn');
+if (genBtn) {
+    genBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+        try {
+            const res = await fetch("{% url 'repairs:generate_pickup_otp' job.job_id %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken, 'Accept': 'application/json' },
+                credentials: 'same-origin'
+            });
+            const json = await res.json();
+            if (json.success) {
+                if (json.otp) {
+                    alert('Pickup OTP: ' + json.otp + '\n(Also printed on server console when DEBUG=ON)');
+                } else {
+                    alert('Pickup OTP generated (check server console in DEBUG mode).');
+                }
+            } else {
+                alert(json.error || 'Failed to generate OTP');
+            }
+        } catch (err) {
+            alert('Error generating OTP: ' + String(err));
+        }
+    });
+}
+
+// small helper cookie function used above
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+            }
+        }
+    }
+    return cookieValue;
+}
 </script>
 
 </body>

@@ -6,6 +6,18 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'repairs/login.css' %}">
     <style>
+        /* Role banner shown when coming from landing page */
+        .role-banner{
+            background: rgba(14,165,233,0.12);
+            border-left: 6px solid #0ea5e9;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 6px;
+            color: #0b4f66;
+            font-weight:600;
+        }
+    </style>
+    <style>
         /* Inline fallback: ensure background image is applied even if external CSS fails */
         body { background-image: url("{% static 'repairs/bg.jpg' %}"); background-size: cover; background-position: center center; }
     </style>
@@ -16,6 +28,16 @@
     <div class="panel left-panel" style="background:rgba(0, 0, 0, 0.30)">
         <div class="form-box">
             <h2>Login</h2>
+            {% comment %} Display role hint when provided via query param e.g. ?role=store {% endcomment %}
+            {% if request.GET.role %}
+                {% if request.GET.role == 'store' %}
+                    <div class="role-banner">Logging in as <span style="color:#b45309;">Store Staff</span></div>
+                {% elif request.GET.role == 'warehouse' %}
+                    <div class="role-banner">Logging in as <span style="color:#0ea5e9;">Warehouse Staff</span></div>
+                {% else %}
+                    <div class="role-banner">Logging in as <span style="color:#10b981;">Customer</span></div>
+                {% endif %}
+            {% endif %}
             {% if error %}
             <div class="error-message" style="color: #b00020; margin-bottom:10px;">{{ error }}</div>
             {% endif %}
