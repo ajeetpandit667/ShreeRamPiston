@@ -26,6 +26,49 @@
 
         <h1 style="text-align:center; margin-bottom:2rem;">Job {{ job.job_id }}</h1>
 
+        <!-- AI Delay Prediction -->
+        <div class="card" style="margin-top: 1.5rem; background:#ffffffaa; border-left:6px solid #0ea5e9;">
+            <h3 style="margin-bottom:0.75rem;">⏳ AI Delay Prediction</h3>
+
+            <div id="aiDelayBox" class="info-box" style="font-size:1rem; padding:1rem;">
+                <em>Calculating delay probability...</em>
+            </div>
+        </div>
+
+        <script>
+        fetch("{% url 'repairs:api_delay_prediction' job.job_id %}")
+            .then(response => response.json())
+            .then(data => {
+                const box = document.getElementById("aiDelayBox");
+
+                if (!data.delay_chance && data.delay_chance !== 0) {
+                    box.innerHTML = "⚠️ AI model not trained yet.";
+                    box.className = "error-box";
+                    return;
+                }
+
+                let color = "#10b981";   // green (safe)
+                if (data.delay_chance > 70) color = "#ef4444";    // red (high delay)
+                else if (data.delay_chance > 40) color = "#f59e0b"; // yellow (medium)
+
+                box.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <div style="font-size:2.5rem;">🤖</div>
+                        <div>
+                            <b>Estimated Delay Probability:</b> 
+                            <span style="color:${color}; font-size:1.25rem;">
+                                ${data.delay_chance}%
+                            </span>
+                        </div>
+                    </div>
+                `;
+            })
+            .catch(() => {
+                document.getElementById("aiDelayBox").innerHTML =
+                    "⚠️ Unable to load prediction.";
+            });
+        </script>
+
         <!-- Job Details -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:2rem;">
             <div>

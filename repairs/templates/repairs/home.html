@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{% static 'repairs/theme.css' %}">
 </head>
 
-<body>
+<body style="display:flex; flex-direction:column; min-height:100vh;">
 
 <!-- Navigation Bar -->
 <nav>
@@ -22,12 +22,44 @@
 </nav>
 
 <!-- Main Content -->
-<div class="container" style="padding:2rem 1.5rem;">
+<div class="container" style="padding:2rem 1.5rem; flex:1;">
     <div class="card">
 
         <h2 style="text-align:center; margin-bottom:2rem;">
             Create Repair Request
         </h2>
+
+        <!-- Smart Warehouse Recommendation Card -->
+        <div class="card" style="margin-bottom:1.5rem; background:#ffffffaa; border-left:6px solid #10b981;">
+            <h3 style="margin-bottom:0.75rem;">📦 Smart Warehouse Recommendation</h3>
+
+            <div id="warehouseSuggestion" class="info-box">
+                <em>Analyzing warehouse workload...</em>
+            </div>
+        </div>
+
+        <script>
+        fetch("{% url 'repairs:best_warehouse' %}")
+            .then(response => response.json())
+            .then(data => {
+                let html = `
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <div style="font-size:2.5rem;">📊</div>
+                        <div>
+                            <b>Recommended Warehouse:</b> 
+                            <span style="color:#0ea5e9; font-size:1.25rem;">${data.warehouse}</span><br>
+                            <small>(Current Load: ${data.load} active jobs)</small>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById("warehouseSuggestion").innerHTML = html;
+            })
+            .catch(() => {
+                document.getElementById("warehouseSuggestion").innerHTML =
+                    "⚠️ Unable to load recommendation.";
+            });
+        </script>
 
         <!-- Request Form -->
         <form id="reqForm" style="display:grid; gap:1rem; max-width:450px; margin:auto;">
@@ -155,14 +187,19 @@ document.getElementById("verifyBtn").addEventListener("click", async () => {
     if (json.success) {
         alert("Job Created Successfully!");
 
-        // Redirect to job detail
-        window.location.href = "/repairs/job/" + json.job_id + "/";
+        // Redirect to job detail (use the jobs URL pattern)
+        window.location.href = "/jobs/" + json.job_id + "/";
 
     } else {
         alert(json.error);
     }
 });
 </script>
+
+<!-- Footer -->
+<footer style="padding:1rem 0; text-align:center; background:transparent;">
+    <p style="margin:0; color:#6b7280;">© 2025 Shree Ram Piston. All rights reserved.</p>
+</footer>
 
 </body>
 </html>

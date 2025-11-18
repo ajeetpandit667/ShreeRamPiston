@@ -18,6 +18,71 @@ from .models import (
     OtpLog, NotifyLog, Courier, JobPhoto, StaffProfile
 )
 from .notifications import send_notification
+from .models import LoginProfile
+
+from django.http import JsonResponse
+
+# ---------------------------------------
+# ml models trained from db 
+# -------------------------------------
+
+def api_delay_prediction(request, job_id):
+    job = RepairJob.objects.get(job_id=job_id)
+
+    warehouse_load = RepairJob.objects.filter(
+        store=job.store, status__in=["received", "repairing"]
+    ).count()
+
+    vendor_load = RepairJob.objects.filter(status="sent_vendor").count()
+
+    # Import ML predictor lazily so missing ML dependencies don't break the app
+    try:
+        from repairs.ml.delay_model import predict_delay
+        prediction = predict_delay(
+            repair_days=job.repair_days,
+            warehouse_load=warehouse_load,
+            vendor_load=vendor_load,
+            damage_text=job.damage_reason or ""
+        )
+    except Exception:
+        prediction = None
+
+    return JsonResponse({
+        "job_id": job_id,
+        "delay_chance": prediction
+    })
+
+
+def api_best_warehouse(request):
+    """Return a simple recommendation for the best warehouse to route a job to.
+
+    This is a lightweight heuristic endpoint: if there are warehouses it
+    returns the first warehouse name and an approximate current load (number
+    of jobs in 'received' or 'repairing'). If no warehouses exist it returns
+    null/0.
+    """
+    try:
+        from .models import Warehouse
+        active_statuses = ["received", "repairing"]
+        total_active = RepairJob.objects.filter(status__in=active_statuses).count()
+        warehouses = list(Warehouse.objects.all())
+        if not warehouses:
+            return JsonResponse({"warehouse": None, "load": 0})
+
+        # Simple even distribution estimate: divide active jobs by warehouses
+        per = total_active // max(1, len(warehouses))
+        # choose the warehouse with the smallest id (stable) as recommendation
+        recommended = sorted(warehouses, key=lambda w: (getattr(w, 'id', 0)))[0]
+
+        return JsonResponse({
+            "warehouse": recommended.name,
+            "load": per
+        })
+    except Exception:
+        return JsonResponse({"warehouse": None, "load": 0})
+    
+    
+# duplicate removed: keep the earlier safe `api_best_warehouse` implementation
 
 # -------------------------------------------------------
 # ROLE CHECKING HELPERS
@@ -436,3 +501,60 @@ def job_stats(request):
         "weeks": [d["week"].strftime("%d %b") for d in data],
         "counts": [d["count"] for d in data]
     })
+
+
+def register(request):
+    """Handle simple user registration from the login/register template.
+
+    Creates a Django user (username set to email), a LoginProfile, and an
+    optional Customer entry if `mobile` is provided. Logs the user in and
+    redirects to `dashboard` on success. Renders the login template with an
+    `error` context on failure.
+    """
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        confirm = request.POST.get('confirm_password', '')
+        mobile = request.POST.get('mobile', '').strip()
+
+        if not email or not password:
+            return render(request, 'registration/login.html', {'error': 'Email and password are required.'})
+
+        if password != confirm:
+            return render(request, 'registration/login.html', {'error': 'Passwords do not match.'})
+
+        if User.objects.filter(username=email).exists():
+            return render(request, 'registration/login.html', {'error': 'A user with that email already exists.'})
+
+        # create user
+        user = User.objects.create_user(username=email, email=email, first_name=name)
+        user.set_password(password)
+        user.save()
+
+        # create LoginProfile
+        try:
+            LoginProfile.objects.create(user=user, is_registered=True)
+        except Exception:
+            pass
+
+        # optionally create Customer record for this mobile
+        try:
+            if mobile:
+                Customer.objects.get_or_create(phone=mobile, defaults={'name': name, 'email': email})
+        except Exception:
+            pass
+
+        # log the user in
+        user = authenticate(username=email, password=password)
+        if user:
+            auth_login(request, user)
+            return redirect('repairs:dashboard')
+
+        return render(request, 'registration/login.html', {'error': 'Registration succeeded but login failed. Please login manually.'})
+
+    # If GET, just render the login/register page
+    return render(request, 'registration/login.html')

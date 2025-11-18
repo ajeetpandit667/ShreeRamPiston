@@ -47,6 +47,7 @@ urlpatterns = [
     # -------------------------
     # DASHBOARDS
     # -------------------------
+    path("register/", views.register, name="register"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("store-dashboard/", views.store_dashboard, name="store_dashboard"),
     path("warehouse-dashboard/", views.warehouse_dashboard, name="warehouse_dashboard"),
@@ -55,4 +56,11 @@ urlpatterns = [
     # ANALYTICS
     # -------------------------
     path("job-stats/", views.job_stats, name="job_stats"),
+    
+    # -------------------------
+    # AI/ML
+    # -------------------------
+    path("api/delay-prediction/<str:job_id>/", views.api_delay_prediction, name="api_delay_prediction"),
+    path("api/best-warehouse/", views.api_best_warehouse, name="best_warehouse"),
+
 ]
